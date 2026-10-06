@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Clientes · Producto</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.pp{--bg:#F6F6F7;--panel:#FFFFFF;--panel2:#FAFAFA;--border:#E4E4E7;--line:#EEEEF0;--text:#18181B;--text2:#5E5E68;--text3:#8B8B95;--hover:#F4F4F5;--active:#EBEBED;--sel:#F0F1F8;--primary:#3B5BDB;--primaryFg:#FFFFFF;--link:#3B5BDB;--red:#E5484D;--orange:#F06A1D;--orangeText:#AE4A0E;--green:#30A46C;--amber:#E2A336;--blue:#3E63DD;--violet:#8E4EC6;--kbd:#F4F4F5;--overlay:rgba(24,24,27,.24);--inv:#18181B;--invText:#FAFAFA;--shadow:0 0 0 1px rgba(0,0,0,.04),0 4px 8px rgba(0,0,0,.04),0 24px 48px rgba(0,0,0,.10)}
+.pp.dark{--bg:#0B0B0D;--panel:#121214;--panel2:#161618;--border:#252528;--line:#1C1C1F;--text:#EDEDEF;--text2:#A0A0A8;--text3:#6E6E76;--hover:#1A1A1D;--active:#202024;--sel:#191C2C;--primary:#91A7FF;--primaryFg:#0A0F2C;--link:#B4C3FF;--red:#F2555A;--orange:#FF8A3D;--orangeText:#FFAE78;--green:#3DD68C;--amber:#F0B44C;--blue:#7B9BFF;--violet:#B98AE6;--kbd:#1F1F23;--overlay:rgba(0,0,0,.55);--inv:#EDEDEF;--invText:#0B0B0D;--shadow:0 0 0 1px rgba(255,255,255,.06),0 24px 48px rgba(0,0,0,.6)}
+.pp a{color:inherit}
+.pp :focus-visible{outline:2px solid #A5B4FC;outline-offset:2px}
+.pp.dark :focus-visible{outline-color:#91A7FF}
+.pp .hov:hover{background:var(--hover) !important}
+.pp .navitem:hover{background:var(--active) !important}
+.pp button,.pp a{transition:background-color .12s ease-out,border-color .12s ease-out}
+.pp .pop{animation:pp-pop .14s ease-out}
+@keyframes pp-pop{from{opacity:0;translate:0 4px}to{opacity:1;translate:0 0}}
+@media (prefers-reduced-motion: reduce){.pp .pop{animation:none}}
+</style>
+</helmet>
+<div class="{{themeClass}}" style="position: relative; display: flex; flex-wrap: wrap; min-height: 900px; background: var(--bg); color: var(--text); font-family: Geist, system-ui, sans-serif; font-size: 13px; line-height: 1.5; -webkit-font-smoothing: antialiased">
+  <div style="flex: 0 0 232px; display: flex">
+    <dc-import name="Sidebar" active="clientes" sub="" hint-size="232px,900px"></dc-import>
+  </div>
+
+  <div style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 10px 0 16px; border-bottom: 1px solid var(--line)">
+      <h1 style="margin: 0 10px 0 0; font-size: 13px; font-weight: 500">Clientes</h1>
+      <nav aria-label="Vistas" style="display: flex; gap: 2px">
+        <sc-for list="{{views}}" as="v" hint-placeholder-count="3">
+          <button type="button" onClick="{{v.pick}}" aria-pressed="{{v.pressed}}" style="{{v.style}}"><span>{{v.label}}</span><span style="color: var(--text3); font-variant-numeric: tabular-nums">{{v.count}}</span></button>
+        </sc-for>
+      </nav>
+      <span style="flex: 1"></span>
+      <button type="button" style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: 6px; border: 0; background: var(--primary); color: var(--primaryFg); font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer">Nuevo cliente <kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; opacity: .7">C</kbd></button>
+    </header>
+
+    <div style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-bottom: 1px solid var(--line)">
+      <div style="display: inline-flex; align-items: center; height: 26px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; font-size: 12px">
+        <span style="padding: 0 8px; color: var(--text2)">Responsable</span><span style="padding: 0 6px; color: var(--text3); border-left: 1px solid var(--line)">es</span><span style="padding: 0 8px; border-left: 1px solid var(--line)">Tú</span>
+      </div>
+      <button type="button" class="hov" style="height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text3); font: inherit; font-size: 12px; cursor: pointer">+ Filtro</button>
+      <span style="flex: 1"></span>
+      <input value="{{query}}" onChange="{{setQuery}}" placeholder="Buscar por nombre o correo" aria-label="Buscar" style="width: 220px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; font-size: 12px">
+    </div>
+
+    <div style="flex: 1; display: flex; min-height: 0">
+      <section aria-label="Lista" style="flex: 1; min-width: 0; overflow-y: auto">
+        <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}">
+          <div style="padding: 48px 24px; text-align: center; color: var(--text2)">
+            <div style="font-weight: 500; color: var(--text)">Todo al día</div>
+            <div style="margin-top: 4px"><span>{{emptySummary}}</span></div>
+          </div>
+        </sc-if>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+          <button type="button" class="{{r.cls}}" onClick="{{r.pick}}" aria-pressed="{{r.pressed}}" style="{{r.style}}">
+            <span style="{{r.dot}}"></span>
+            <span style="font-weight: 500; white-space: nowrap">{{r.name}}</span>
+            <span style="min-width: 0; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.context}}</span>
+            <span style="margin-left: auto; color: var(--text2); white-space: nowrap; font-variant-numeric: tabular-nums">{{r.age}}</span>
+          </button>
+        </sc-for>
+      </section>
+
+      <sc-if value="{{hasPeek}}" hint-placeholder-val="{{true}}">
+        <aside aria-label="Vista lateral" style="flex: 0 0 340px; border-left: 1px solid var(--line); padding: 14px 18px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; align-items: center; gap: 6px; color: var(--text3); font-size: 12px">
+            <span>{{peek.crumb}}</span>
+            <span style="flex: 1"></span>
+            <span style="font-variant-numeric: tabular-nums">{{peek.position}}</span>
+          </div>
+          <h2 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.012em">{{peek.name}}</h2>
+          <p style="margin: 0; color: var(--text2)">{{peek.summary}}</p>
+          <button type="button" onClick="{{resolve}}" style="display: inline-flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--primary); color: var(--primaryFg); font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer"><span>{{peek.primary}}</span><kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; opacity: .7">E</kbd></button>
+          <div style="display: flex; gap: 6px; color: var(--text3); font-size: 12px">
+            <button type="button" onClick="{{prev}}" class="hov" style="height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text2); font: inherit; font-size: 12px; cursor: pointer">K anterior</button>
+            <button type="button" onClick="{{next}}" class="hov" style="height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text2); font: inherit; font-size: 12px; cursor: pointer">J siguiente</button>
+          </div>
+        </aside>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div role="status" class="pop" style="position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 6px 0 14px; border-radius: 10px; background: var(--inv); color: var(--invText); box-shadow: var(--shadow); white-space: nowrap; z-index: 8">
+      <span>{{toastText}}</span>
+      <button type="button" onClick="{{undo}}" style="height: 26px; padding: 0 8px; margin-left: 8px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer">Deshacer</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: 'mios', selected: 'c1', resolved: {}, query: '', toast: null, snapshot: null, resolvedToday: 4 };
+  }
+
+  data() {
+    return [
+      { id: 'c1', name: 'Lucas Romero', context: 'Pagó ayer · falta confirmar la puesta en marcha', age: '47 min', mine: true, tone: 'var(--orange)', primary: 'Confirmar puesta en marcha', summary: 'Alta de ayer en el plan Pro. La cuenta ya está activa; falta la llamada de bienvenida.' },
+      { id: 'c2', name: 'Irene Vidal', context: 'Enlace de pago enviado hace 2 d · sin abrir', age: '2 d', mine: true, tone: 'var(--orange)', primary: 'Recordar el pago', summary: 'Paga su empresa. El enlace caduca en 5 días.' },
+      { id: 'c3', name: 'Tomás Gil', context: 'Cobro rechazado · tarjeta caducada', age: '6 min', mine: true, tone: 'var(--red)', primary: 'Enviar enlace para cambiar tarjeta', summary: 'Mantiene el acceso 3 días más.' },
+      { id: 'c4', name: 'Sara Molina', context: 'Pregunta por su factura de septiembre', age: '22 min', mine: false, tone: 'var(--text3)', primary: 'Reenviar factura', summary: 'Asignada a Pablo S.' }
+    ];
+  }
+
+  visible(s) {
+    const q = s.query.trim().toLowerCase();
+    return this.data().filter((c) => !s.resolved[c.id] && (s.view === 'todos' || c.mine) && (!q || c.name.toLowerCase().includes(q)));
+  }
+
+  flash(patch, text) {
+    const id = Date.now() + Math.random();
+    const s = this.state;
+    const snapshot = { resolved: s.resolved, selected: s.selected, resolvedToday: s.resolvedToday };
+    this.setState({ ...patch, snapshot, toast: { id, text } });
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => { if (this.state.toast && this.state.toast.id === id) this.setState({ toast: null }); }, 6000);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const list = this.visible(s);
+    const cur = list.find((c) => c.id === s.selected) || list[0] || null;
+    const idx = cur ? list.indexOf(cur) : -1;
+    const all = this.data().filter((c) => !s.resolved[c.id]);
+    const views = [['mios', 'Míos', all.filter((c) => c.mine).length], ['todos', 'Todos', all.length]].map(([id, label, count]) => ({
+      label, count: String(count), pressed: s.view === id ? 'true' : 'false',
+      style: 'height:26px;display:inline-flex;align-items:center;gap:6px;padding:0 9px;border:0;border-radius:6px;font:inherit;cursor:pointer;' + (s.view === id ? 'background:var(--active);color:var(--text);font-weight:500;' : 'background:transparent;color:var(--text2);'),
+      pick: () => this.setState({ view: id })
+    }));
+    const rows = list.map((c) => {
+      const on = cur && c.id === cur.id;
+      return {
+        ...c,
+        cls: on ? '' : 'hov',
+        pressed: on ? 'true' : 'false',
+        dot: 'flex:none;width:8px;height:8px;border-radius:999px;background:' + c.tone + ';',
+        style: 'display:flex;align-items:center;gap:10px;width:100%;height:40px;padding:0 16px;border:0;border-bottom:1px solid var(--line);font:inherit;color:var(--text);text-align:left;cursor:pointer;' + (on ? 'background:var(--sel);box-shadow:inset 2px 0 0 var(--primary);' : 'background:transparent;'),
+        pick: () => this.setState({ selected: c.id })
+      };
+    });
+    const go = (d) => () => { if (list.length) this.setState({ selected: list[(idx + d + list.length) % list.length].id }); };
+    const resolve = () => {
+      if (!cur) return;
+      const nextItem = list[idx + 1] || list[idx - 1] || null;
+      this.flash({ resolved: { ...s.resolved, [cur.id]: true }, selected: nextItem ? nextItem.id : null, resolvedToday: s.resolvedToday + 1 }, cur.name + ' · hecho');
+    };
+    return {
+      themeClass: this.props.dark ? 'pp dark' : 'pp',
+      views,
+      rows,
+      query: s.query,
+      setQuery: (e) => this.setState({ query: e.target.value }),
+      isEmpty: list.length === 0,
+      emptySummary: s.resolvedToday + ' resueltos hoy · lo siguiente en tu agenda: 12:00, llamada de bienvenida',
+      hasPeek: Boolean(cur),
+      peek: cur ? { name: cur.name, summary: cur.summary, primary: cur.primary, crumb: 'Clientes › ' + (cur.mine ? 'Míos' : 'Equipo'), position: (idx + 1) + ' de ' + list.length } : { name: '', summary: '', primary: '', crumb: '', position: '' },
+      resolve,
+      prev: go(-1),
+      next: go(1),
+      hasToast: Boolean(s.toast),
+      toastText: s.toast ? s.toast.text : '',
+      undo: () => { if (s.snapshot) this.setState({ ...s.snapshot, snapshot: null, toast: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

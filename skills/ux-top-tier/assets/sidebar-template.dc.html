@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Navegación · Producto</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<nav aria-label="Navegación principal" style="width: 232px; height: 100%; min-height: 900px; box-sizing: border-box; padding: 10px 8px 10px 10px; display: flex; flex-direction: column; gap: 2px; font-family: Geist, system-ui, sans-serif; font-size: 13px; color: var(--text, #18181B); background: var(--bg, #F6F6F7)">
+  <div style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px">
+    <span style="width: 20px; height: 20px; border-radius: 5px; background: var(--primary, #3B5BDB); color: #FFFFFF; display: grid; place-items: center; font-size: 12px; font-weight: 700">A</span>
+    <span style="flex: 1; font-weight: 600">Producto</span>
+    <a href="Main.dc.html" aria-label="Crear" style="width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; border: 1px solid var(--border, #E6E6EA); background: var(--panel, #FFFFFF); color: var(--text2, #5F5F6B); text-decoration: none">+</a>
+  </div>
+
+  <a href="Main.dc.html" style="display: flex; align-items: center; gap: 8px; height: 30px; margin: 6px 0 10px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--border, #E6E6EA); background: var(--panel, #FFFFFF); color: var(--text3, #8E8E99); text-decoration: none">
+    <span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Buscar o preguntar…</span>
+    <span style="flex: none; font-family: 'Geist Mono', monospace; font-size: 11px">⌘K</span>
+  </a>
+
+  <a class="navitem" href="Main.dc.html" style="{{st.hoy}}"><span style="flex: 1">Hoy</span><span style="font-size: 12px; color: var(--text2, #5F5F6B); font-variant-numeric: tabular-nums">14</span></a>
+  <a class="navitem" href="Inbox.dc.html" style="{{st.inbox}}"><span style="flex: 1">Conversaciones</span><span style="font-size: 12px; color: var(--text2, #5F5F6B); font-variant-numeric: tabular-nums">7</span></a>
+
+  <div style="padding: 14px 8px 4px; font-size: 11.5px; font-weight: 500; color: var(--text3, #8E8E99)">Operación</div>
+  <a class="navitem" href="Clientes.dc.html" style="{{st.clientes}}"><span style="flex: 1">Clientes</span></a>
+  <a class="navitem" href="Ajustes.dc.html" style="{{st.ajustes}}"><span style="flex: 1">Configuración</span></a>
+  <sc-if value="{{open.ajustes}}" hint-placeholder-val="{{false}}">
+    <div style="display: flex; flex-direction: column; gap: 1px; margin: 1px 0 4px">
+      <a class="navitem" href="Ajustes.dc.html" style="{{ss.general}}"><span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">General</span></a>
+      <a class="navitem" href="Roles.dc.html" style="{{ss.roles}}"><span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Roles y permisos</span></a>
+    </div>
+  </sc-if>
+
+  <span style="flex: 1"></span>
+  <a class="navitem" href="Cuenta.dc.html" style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px; border-radius: 7px; text-decoration: none">
+    <span style="width: 24px; height: 24px; border-radius: 999px; background: #E3E8FF; color: #2B3A8C; display: grid; place-items: center; font-size: 10px; font-weight: 600">AG</span>
+    <span style="display: flex; flex-direction: column; line-height: 1.2"><span style="font-weight: 500">Ana G.</span><span style="font-size: 11.5px; color: var(--text3, #8E8E99)">Operaciones</span></span>
+  </a>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["hoy","inbox","clientes","ajustes"],"default":"hoy"},"sub":{"editor":"text","default":""},"$preview":{"width":232,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active || 'hoy';
+    const sub = this.props.sub || (active === 'ajustes' ? 'general' : '');
+    const base = 'display:flex;align-items:center;gap:10px;height:30px;padding:0 8px;border-radius:7px;text-decoration:none;font-weight:500;';
+    const st = {};
+    ['hoy', 'inbox', 'clientes', 'ajustes'].forEach((k) => {
+      st[k] = base + (k === active ? 'background:var(--active, #EAEAEE);color:var(--text, #18181B);' : 'color:var(--text2, #5F5F6B);');
+    });
+    const subBase = 'display:flex;align-items:center;gap:8px;height:28px;padding:0 8px 0 34px;border-radius:7px;text-decoration:none;';
+    const ss = {};
+    ['general', 'roles'].forEach((k) => {
+      ss[k] = subBase + (k === sub ? 'background:var(--active, #EAEAEE);color:var(--text, #18181B);font-weight:500;' : 'color:var(--text2, #5F5F6B);');
+    });
+    return { st, ss, open: { ajustes: active === 'ajustes' } };
+  }
+}
+</script>
+</body>
+</html>

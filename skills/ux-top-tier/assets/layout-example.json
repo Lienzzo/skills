@@ -1,0 +1,31 @@
+{
+  "title": "Producto — UX objetivo",
+  "launch_page": "uso-diario",
+  "pages": [
+    {
+      "id": "uso-diario",
+      "name": "1 · Uso diario: pantallas clave",
+      "rows": [
+        {"title": "Empezar el día: qué requiere acción y quién es cada persona", "boards": ["Main", "Seguimiento", "Cliente360"]},
+        {"title": "Atender, dar de alta y seguir cada incorporación", "boards": ["Inbox", "NuevaAlta", "AltasEnCurso"]}
+      ]
+    },
+    {
+      "id": "gestion",
+      "name": "2 · Gestión y configuración",
+      "rows": [
+        {"title": "Clientes, permisos y ajustes", "boards": ["Clientes", "Roles", "Ajustes"]}
+      ]
+    }
+  ],
+  "intensive": ["Main", "Seguimiento", "Cliente360", "Inbox", "NuevaAlta", "AltasEnCurso", "Clientes"],
+  "titles": {
+    "Main": "1 · Hoy — bandeja con vista lateral (+ ⌘K)",
+    "Inbox": "4 · Conversaciones con contexto"
+  },
+  "sidebar": {"board": "Sidebar", "page": "uso-diario", "title": "Navegación"},
+  "intro": {
+    "page": "uso-diario",
+    "text": "PANTALLAS DE USO INTENSIVO\n\nHoy, Conversaciones, Seguimiento, Ficha 360, Nueva alta, Altas y Clientes son las pantallas donde el equipo pasa más horas. Llevan la etiqueta «uso intensivo» y se han trabajado con un listón más alto:\n\n• Trabajo en serie: al resolver, se abre sola la siguiente.\n• Deshacer en vez de confirmar.\n• Teclado primero, con los atajos visibles.\n• Acciones en línea, sin modales.\n• Valores por defecto útiles.\n• Contadores vivos y estados vacíos con el resumen del día."
+  }
+}
