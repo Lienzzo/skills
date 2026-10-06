@@ -64,6 +64,7 @@ Guarda un brief corto. Si se puede escribir en el repo, en `<carpeta de document
 - Marca (primario, acento, logo, tono):
 - Restricciones (sistema de diseño, a11y, dispositivos, idioma):
 - Entregables acordados:
+- Capturas del «antes» (carpeta, tamaño de ventana, qué se enmascara):
 - Hoja de verdad del prototipo («ahora», personas, totales): se completa en la fase 3
 ```
 

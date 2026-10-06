@@ -2,6 +2,8 @@
 
 Las pantallas donde el equipo pasa horas multiplican cada clic por cientos de repeticiones al día. Aquí no basta con un flujo correcto: cada acción frecuente debe costar un clic o una tecla, y nunca obligar a volver a la lista.
 
+Diseña cada una sentado en la silla de quien la usa ocho horas al día, cinco días a la semana. Lo que para ti es «un clic más» para esa persona son cientos de clics al día y un dolor que no se acaba. No partas de cómo es hoy la pantalla: parte de la tarea y de cómo la resolverían Linear o v0, y pon en el informe el coste de la fricción que quitas (segundos × veces al día × personas).
+
 ## Cómo identificarlas
 
 Pregunta o deduce del contexto (roles, transcripciones, feedback) qué hace cada rol todo el día. Suelen ser:

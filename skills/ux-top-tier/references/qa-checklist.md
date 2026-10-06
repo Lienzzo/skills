@@ -15,8 +15,20 @@ Además:
 - **Enlaces:** todo `href="X.dc.html"` (lienzo) o `href="#pantalla"` (página) apunta a algo que existe. `scan_ui.py` lo comprueba.
 - **Alturas (lienzo):** `$preview.height` igual a la `min-height` del contenedor raíz.
 - **Lógica (página HTML):** en el navegador, cada acción, su «Deshacer» y cada atajo.
+- **Capturas del «antes»:** en la página, `scan_ui.py` avisa de las pantallas sin `before` y de las capturas que no existen. En el lienzo, `build_canvas.py` avisa de las pantallas sin captura que no están en `"new"`.
 
-## 2. Visual (a tamaño real, en el navegador, pantalla por pantalla)
+## 2. Revisión senior (la última puerta, pantalla por pantalla)
+
+Hazla antes de la revisión visual. Si una pantalla no pasa, se rehace; no se pule.
+
+- [ ] **Rediseñada, no repintada.** Ponla al lado de su captura del «antes». Si se reconoce la misma estructura (la misma navegación, el mismo orden, los mismos modales) con otro estilo, no está rediseñada.
+- [ ] **Menos coste por tarea.** Cuenta clics, teclas, pantallas y esperas de su tarea principal, antes y ahora. Deben bajar, y en las de uso intensivo, a un clic o una tecla por elemento.
+- [ ] **Ocho horas al día.** Imagina a quien la usa toda la jornada. Apunta las tres cosas que aún le molestarían a la décima repetición y quítalas.
+- [ ] **Listón Linear.** ¿Pasaría la revisión de diseño de Linear? ¿Hay algo que parezca plantilla, genérico o «vibecoded» (`references/design-language.md`, § 6)?
+- [ ] **Cada elemento se gana su sitio.** Quita lo que no ayude a decidir o a actuar.
+- [ ] **Estados completos.** Hover, foco, carga, vacío, error y éxito diseñados, no por defecto.
+
+## 3. Visual (a tamaño real, en el navegador, pantalla por pantalla)
 
 - [ ] Ningún texto partido en dos líneas donde no debe: botones, etiquetas, insignias, pestañas.
 - [ ] Ningún solapamiento: cabeceras de columna, celdas largas (elipsis), avisos sobre botones, popovers sobre contenido.
@@ -33,7 +45,7 @@ Además:
   - campos con etiqueta o `aria-label`;
   - botones de solo icono con `aria-label`.
 
-## 3. Interacción (pantallas de uso intensivo)
+## 4. Interacción (pantallas de uso intensivo)
 
 - [ ] La acción principal ejecuta, muestra el resultado y pasa al siguiente.
 - [ ] «Deshacer» devuelve exactamente el estado anterior, contadores incluidos.
@@ -41,7 +53,7 @@ Además:
 - [ ] El estado vacío final aparece al vaciar la cola y resume lo hecho.
 - [ ] Los atajos visibles funcionan al pulsarlos como botones y, en la página HTML, también con el teclado.
 
-## 4. Coherencia entre pantallas (la que más se olvida)
+## 5. Coherencia entre pantallas (la que más se olvida)
 
 Haz una tabla mental o un `grep` de cada persona y cifra recurrente:
 
@@ -56,9 +68,11 @@ Haz una tabla mental o un `grep` de cada persona y cifra recurrente:
 - [ ] **Asignaciones coherentes:** lo que está «asignado a mí» en una cola lo está también en la agenda.
 - [ ] **Notas «Antes / Ahora»** al día con lo que realmente hace cada tablero, sin cifras antiguas.
 
-## 5. Entrega
+## 6. Entrega
 
-- [ ] Lienzo: `canvas.json` regenerado, sin solapamientos y con `launch` en la primera página. Página HTML: abre en la primera pantalla de uso diario y el panel de notas funciona.
+- [ ] Lienzo: creado como artefacto del tipo «Design», con `canvas.json` regenerado, sin solapamientos y con `launch` en la primera página. Página HTML: abre en la primera pantalla de uso diario y el panel de notas funciona.
+- [ ] Cada pantalla rediseñada tiene su captura del «antes» (encima, en el lienzo; con «Ver antes», en la página), salvo las nuevas, que lo explican en su nota.
+- [ ] Ninguna captura muestra datos personales reales: revisadas una a una.
 - [ ] Notas de uso intensivo con el bloque «Fricción mínima».
 - [ ] Informe y documento actualizados con el enlace al prototipo y la sección de uso intensivo.
 - [ ] Pestañas del navegador que abriste, cerradas.

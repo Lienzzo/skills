@@ -1,6 +1,8 @@
 # Lenguaje visual «top tier» (Linear / v0)
 
-Lo que hace que una interfaz se sienta como Linear o v0, y lo que la hace parecer «vibecoding». **Si el repo tiene su propio sistema de diseño (`DESIGN.md`, tokens, presupuesto de movimiento), ese manda.** Esto es el punto de partida cuando no hay nada o lo que hay es pobre.
+Lo que hace que una interfaz se sienta como Linear o v0, y lo que la hace parecer «vibecoding». **Si el repo tiene su propio sistema de diseño (`DESIGN.md`, tokens, presupuesto de movimiento), ese manda en tokens, marca y motion.** Esto es el punto de partida cuando no hay nada o lo que hay es pobre.
+
+**La UI actual no es la referencia.** La estructura, la jerarquía, los componentes y los patrones de las pantallas que ya existen se rediseñan desde la tarea, con Linear y v0 como dirección. Que algo ya esté en el producto no lo hace bueno.
 
 ## Índice
 1. Principios
@@ -15,6 +17,7 @@ Lo que hace que una interfaz se sienta como Linear o v0, y lo que la hace parece
 
 ## 1. Principios
 
+- **Para quien lo usa ocho horas al día.** Cada decisión se mide por lo que cuesta repetirla cientos de veces: menos clics, menos esperas, menos modales y menos datos que recordar.
 - **Densidad calmada.** Mucha información, poco ruido: grises neutros y un solo color de acción.
 - **La tarea manda.** Cada pantalla responde «¿qué requiere acción?» antes que «¿qué hay?».
 - **Nada se rompe sin aviso.** Estados de carga, vacío, error y éxito diseñados a propósito.
@@ -135,6 +138,24 @@ Lo que sí:
 - avisos en línea discretos, con un icono de 14 px y una frase en `--text`, sin fondo de color;
 - KPI como «número + etiqueta + variación» en una línea;
 - jerarquía con peso y color de texto, no con tamaño.
+
+**El «vibecoding» no es solo visual.** También se nota en el producto:
+- componentes de librería por defecto, sin decisiones propias, con todo al mismo peso;
+- un inicio con tarjetas de KPI que no llevan a ninguna acción;
+- cada entidad como una cuadrícula de tarjetas y un modal para cada cosa;
+- formularios largos en blanco cuando el sistema ya sabe las respuestas;
+- espaciados fuera de escala, alineaciones que casi cuadran y tamaños de texto al azar;
+- textos genéricos («Gestiona tus clientes de forma sencilla») y estados vacíos, de carga o de error sin diseñar;
+- destellos de «IA» por todas partes sin una acción concreta detrás;
+- la pantalla antigua con otra capa de pintura.
+
+Lo trabajado se reconoce porque:
+- cada elemento responde a una tarea y lo que no aporta no está;
+- sigue una escala de 4 px, con alineaciones exactas, cifras tabulares y elipsis donde toca;
+- tiene diseñados el hover, el foco, la carga, el vacío, el error y el éxito;
+- el copy es específico del negocio y los botones son verbos;
+- lo frecuente se hace con teclado, en línea y con deshacer;
+- el mismo problema tiene el mismo patrón en todo el producto.
 
 ## 7. Identidad de marca
 

@@ -10,6 +10,8 @@
   - Con subagentes, una pantalla por archivo (screens/<id>.js) cargado con <script src> después del motor.
   - Tokens en :root (claro) y en [data-theme="dark"] (oscuro). Cambia --primary por el color de la marca.
   - Datos ficticios y coherentes con la hoja de verdad: «ahora» es martes, 10:45.
+  - Cada pantalla lleva en before la captura del producto real que sustituye (antes/<id>.png), con los datos
+    personales enmascarados. «Ver antes» (⇧A) la muestra en lugar de la pantalla; la nota «Antes», en miniatura.
 -->
 <script>try { var t = localStorage.getItem('ux-proto:theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,6 +112,10 @@ kbd{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;opacity:.7}
 .note{padding:12px 14px;background:var(--panel);border:1px solid var(--border);border-radius:10px}
 .note h3{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12px;font-weight:500;color:var(--text2)}
 .note p{margin:0;white-space:pre-line}
+.thumb{display:block;width:100%;margin:2px 0 8px;padding:0;border:1px solid var(--border);border-radius:6px;background:var(--panel2);overflow:hidden;cursor:zoom-in}
+.thumb img,.shot img{display:block;width:100%;height:auto}
+.shot{flex:1;background:var(--panel2)}
+.nav kbd{margin-left:auto}
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:4px;height:38px;padding:0 6px 0 14px;border-radius:10px;background:var(--inv);color:var(--invText);box-shadow:var(--shadow);white-space:nowrap}
 .toast button{display:inline-flex;align-items:center;gap:6px;height:26px;margin-left:8px;padding:0 8px;border:0;border-radius:6px;background:transparent;font-weight:600;cursor:pointer}
@@ -159,11 +165,13 @@ kbd{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;opacity:.7}
      actions                   { nombre(ctx, arg) } que se lanzan con data-act="nombre" data-arg="…"
      keys                      { j: 'next', e: 'resolve', escape: 'close', 'mod+enter': 'send' }
      notes                     { antes: '…', ahora: '…' } para el panel «Antes / Ahora»
+     before                    captura del producto real: 'antes/hoy.png' o [{ src, label }] si son varias;
+                               null si la pantalla es nueva y no sustituye a ninguna («Ver antes», ⇧A)
    ctx: s (estado), set(patch), flash(patch, texto) con «Deshacer», say(texto), go(id).
    En los campos: data-model="clave" guarda el valor en el estado; data-search lo enfoca con «/». */
 const screens = [];
 const state = {};
-const app = { notes: false, palette: null, toast: null, timer: 0, seq: 0 };
+const app = { notes: false, before: false, shot: 0, palette: null, toast: null, timer: 0, seq: 0 };
 let root;
 
 function screen(def) { screens.push(def); }
@@ -248,6 +256,8 @@ function paletteItems() {
 
 function appAction(name, arg, el, e) {
   if (name === 'notes') { app.notes = !app.notes; store.set('notes', app.notes ? '1' : '0'); render(); }
+  else if (name === 'before') { app.before = !app.before; app.shot = 0; render(); }
+  else if (name === 'shot') { app.shot = Number(arg) || 0; render(); }
   else if (name === 'theme') { const next = isDark() ? 'light' : 'dark'; document.documentElement.dataset.theme = next; store.set('theme', next); }
   else if (name === 'undo') undo();
   else if (name === 'palette') openPalette();
@@ -265,6 +275,7 @@ function sidebarView(cur) {
       return h`<a class="nav" href="#${d.id}" aria-current="${d === cur ? 'page' : 'false'}"><span class="ellipsis">${d.title}</span>${n ? h`<span class="count num">${n}</span>` : ''}</a>`;
     })}`)}
     <div class="side-foot">
+      <button type="button" class="nav" data-app="before" aria-pressed="${app.before ? 'true' : 'false'}"><span>Ver antes</span><kbd>⇧A</kbd></button>
       <button type="button" class="nav" data-app="notes" aria-pressed="${app.notes ? 'true' : 'false'}">Notas Antes / Ahora</button>
       <button type="button" class="nav" data-app="theme">Tema claro u oscuro</button>
       <div class="me"><span class="avatar">AG</span><span style="display:flex;flex-direction:column;line-height:1.2"><span style="font-weight:500">Ana G.</span><span class="muted" style="font-size:11.5px">Operaciones</span></span></div>
@@ -272,11 +283,34 @@ function sidebarView(cur) {
   </nav>`;
 }
 
+function shotsOf(def) {
+  const b = def.before;
+  if (!b) return [];
+  return (Array.isArray(b) ? b : [b]).map((x) => (typeof x === 'string' ? { src: x, label: '' } : x));
+}
+
+function beforeView(cur) {
+  const shots = shotsOf(cur);
+  const i = Math.min(app.shot, Math.max(shots.length - 1, 0));
+  const shot = shots[i];
+  return h`<header class="bar">
+      <h1>${cur.title}</h1>
+      <span class="badge"><span class="dot" style="background:var(--orange)"></span>Antes · producto real</span>
+      ${shots.length > 1 ? h`<div class="tabs" role="group" aria-label="Capturas" style="margin-left:8px">${shots.map((x, n) => h`<button type="button" class="tab" data-app="shot" data-arg="${n}" aria-pressed="${n === i ? 'true' : 'false'}">${x.label || 'Captura ' + (n + 1)}</button>`)}</div>` : ''}
+      <span class="spacer"></span>
+      <button type="button" class="btn sm" data-app="before">Ver el rediseño <kbd>Esc</kbd></button>
+    </header>
+    ${shot
+      ? h`<div class="shot"><img src="${shot.src}" alt="${'Captura del producto real: ' + (shot.label || cur.title)}"></div>`
+      : h`<div class="empty"><strong>Sin captura del antes</strong>Es una pantalla nueva o falta la captura. La nota «Antes» explica de dónde sale.</div>`}`;
+}
+
 function notesView(cur) {
   const n = cur.notes || {};
+  const shot = shotsOf(cur)[0];
   return h`<aside class="notes" aria-label="Notas Antes / Ahora">
     <div class="notes-head"><strong class="ellipsis" style="font-weight:500">${cur.title}${cur.intensive ? ' · uso intensivo' : ''}</strong><span class="spacer"></span><button type="button" class="btn ghost sm" data-app="notes">Cerrar</button></div>
-    <section class="note"><h3><span class="dot" style="background:var(--orange)"></span>Antes</h3><p>${n.antes || 'Sin nota todavía.'}</p></section>
+    <section class="note"><h3><span class="dot" style="background:var(--orange)"></span>Antes</h3>${shot && !app.before ? h`<button type="button" class="thumb" data-app="before" aria-label="Ver la captura del antes a ancho completo"><img src="${shot.src}" alt=""></button>` : ''}<p>${n.antes || 'Sin nota todavía.'}</p></section>
     <section class="note"><h3><span class="dot" style="background:var(--blue)"></span>Ahora</h3><p>${n.ahora || 'Sin nota todavía.'}</p></section>
   </aside>`;
 }
@@ -321,8 +355,8 @@ function render() {
   root.querySelectorAll('[data-scroll]').forEach((n) => { scroll[n.dataset.scroll] = n.scrollTop; });
 
   root.className = 'app' + (app.notes ? ' with-notes' : '');
-  root.innerHTML = show(h`${sidebarView(cur)}<main class="panel">${cur.render(state[cur.id])}</main>${app.notes ? notesView(cur) : ''}${toastView()}${paletteView()}`);
-  document.title = cur.title + ' · Producto';
+  root.innerHTML = show(h`${sidebarView(cur)}<main class="panel">${app.before ? beforeView(cur) : cur.render(state[cur.id])}</main>${app.notes ? notesView(cur) : ''}${toastView()}${paletteView()}`);
+  document.title = cur.title + (app.before ? ' · Antes' : '') + ' · Producto';
 
   root.querySelectorAll('[data-scroll]').forEach((n) => { if (scroll[n.dataset.scroll] != null) n.scrollTop = scroll[n.dataset.scroll]; });
   let target = key ? root.querySelector(key) : null;
@@ -364,6 +398,8 @@ function onKey(e) {
     } else if (k === 'enter' && items[app.palette.i]) { e.preventDefault(); const id = items[app.palette.i].id; closePalette(); location.hash = id; }
     return;
   }
+  if (!typing && !mod && !e.altKey && e.shiftKey && k === 'a') { e.preventDefault(); appAction('before'); return; }
+  if (app.before) { if (k === 'escape' && !typing) { e.preventDefault(); appAction('before'); } return; }
   if (mod && k === 'z' && !typing && app.toast && app.toast.undo) { e.preventDefault(); undo(); return; }
   if (mod && k === 'enter' && keys['mod+enter']) { e.preventDefault(); run(keys['mod+enter'], undefined, true); return; }
   if (typing) { if (k === 'escape') e.target.blur(); return; }
@@ -379,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
   root.addEventListener('click', onClick);
   root.addEventListener('input', onInput);
   document.addEventListener('keydown', onKey);
-  window.addEventListener('hashchange', () => { app.palette = null; render(); });
+  window.addEventListener('hashchange', () => { app.palette = null; app.shot = 0; render(); });
   render();
 });
 </script>
@@ -392,6 +428,7 @@ screen({
   title: 'Hoy',
   group: 'Uso diario',
   intensive: true,
+  before: null, // en el prototipo real: 'antes/hoy.png', la captura enmascarada de la pantalla que sustituye
   initial: { view: 'mios', selected: 'c1', done: {}, query: '', doneToday: 4 },
   data: [
     { id: 'c1', name: 'Lucas Romero', context: 'Pagó ayer · falta la llamada de bienvenida', age: '47 min', late: true, mine: true, tone: 'var(--orange)', primary: 'Marcar llamada hecha', doneText: 'Llamada de bienvenida registrada', summary: 'Alta de ayer en el plan Pro. La cuenta ya está activa; falta la llamada de bienvenida.' },
@@ -478,6 +515,7 @@ screen({
   id: 'clientes',
   title: 'Clientes',
   group: 'Operación',
+  before: null, // varias capturas: [{ src: 'antes/clientes.png', label: 'Listado' }, { src: 'antes/ficha.png', label: 'Ficha' }]
   initial: { plan: 'todos', query: '', selected: null, done: {} },
   data: [
     { id: 'p1', name: 'Lucas Romero', plan: 'Pro', status: 'Activo', tone: 'var(--green)', last: 'Alta ayer' },

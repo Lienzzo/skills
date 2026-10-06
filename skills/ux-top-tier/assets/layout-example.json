@@ -23,6 +23,14 @@
     "Main": "1 · Hoy — bandeja con vista lateral (+ ⌘K)",
     "Inbox": "4 · Conversaciones con contexto"
   },
+  "before": {
+    "Main": [{"file": "antes/Main.png", "src": "/_blob/<id que devolvió la subida>"}],
+    "Inbox": [
+      {"file": "antes/Inbox-lista.png", "src": "/_blob/<id>", "label": "Conversaciones"},
+      {"file": "antes/Inbox-contacto.png", "src": "/_blob/<id>", "label": "Ficha del contacto (hoy en otra pantalla)"}
+    ]
+  },
+  "new": ["AltasEnCurso"],
   "sidebar": {"board": "Sidebar", "page": "uso-diario", "title": "Navegación"},
   "intro": {
     "page": "uso-diario",

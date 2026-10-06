@@ -11,10 +11,12 @@ Checks:
   tokens   CSS variables used but not defined in the light theme, or defined in light but missing in dark
   links    canvas: href="X.dc.html" to a board that does not exist; page: href="#x" to a screen that does not exist
   plural   "1 <palabra>s" literal patterns (e.g. "1 entregas")
+  before   page: a screen without its «before» capture (before: null marks a new screen) or a capture file that
+           does not exist
 
 Usage:
   python3 scan_ui.py --project <dir> [Board | file.html ...] [--allow-id SKU] [--skip menus]
-Without names it scans every *.html in the folder. A bare name (Main) means Main.dc.html.
+Without names it scans every *.html in the folder except the generated Antes-*.dc.html boards. A bare name (Main) means Main.dc.html.
 Exit code 1 if anything is reported.
 """
 import argparse
@@ -29,6 +31,9 @@ OPEN_STATE_RE = re.compile(r"\b((?!peek|panel|side|drawer)\w*(?:[Oo]pen|[Mm]enu|
 LIGHT_RE = re.compile(r'(?:\.pp|:root)\{([^}]*)\}')
 DARK_RE = re.compile(r'(?:\.pp\.dark|:root\[data-theme="dark"\])\{([^}]*)\}')
 SCREEN_ID_RE = re.compile(r"""screen\(\{\s*id:\s*['"]([\w-]+)['"]""")
+BEFORE_RE = re.compile(r"""\bbefore\s*:\s*(null|false|\[[^\]]*\]|(['"])[^'"]*\2)""")
+IMAGE_RE = re.compile(r"""['"]([^'"]+\.(?:png|jpe?g|webp|gif|avif))['"]""", re.I)
+GENERATED = 'Antes-'  # tableros con las capturas del «antes», generados por build_canvas.py
 PLURAL_RE = re.compile(r"[>'\s]1 ([a-záéíóúñ]{3,}s)\b")
 INVARIANT = {
     'mes', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'tesis', 'crisis', 'análisis', 'virus', 'campus',
@@ -74,7 +79,7 @@ class FlexTextParser(HTMLParser):
 
 def resolve(project: pathlib.Path, names: list) -> list:
     if not names:
-        return sorted(project.glob('*.html'))
+        return sorted(p for p in project.glob('*.html') if not p.name.startswith(GENERATED))
     return [project / (n if n.endswith('.html') else f'{n}.dc.html') for n in names]
 
 
@@ -139,6 +144,19 @@ def scan(path: pathlib.Path, project: pathlib.Path, allow_ids: list, skip: set) 
             for target in sorted(set(re.findall(r'href="#([\w-]+)"', text))):
                 if target not in ids:
                     out.append(f'links: enlace a #{target}, que no es ninguna pantalla')
+    if not canvas and 'before' not in skip:
+        sources = [text] + [p.read_text(encoding='utf-8') for p in sorted((project / 'screens').glob('*.js'))]
+        for src in sources:
+            starts = list(SCREEN_ID_RE.finditer(src))
+            for i, m in enumerate(starts):
+                chunk = src[m.start():starts[i + 1].start() if i + 1 < len(starts) else len(src)]
+                found = BEFORE_RE.search(chunk)
+                if not found:
+                    out.append(f'before: la pantalla «{m.group(1)}» no tiene captura del antes (before: null si es nueva)')
+                    continue
+                for img in IMAGE_RE.findall(found.group(1)):
+                    if not (project / img).exists():
+                        out.append(f'before: la captura {img} de «{m.group(1)}» no existe')
     if 'plural' not in skip:
         for m in PLURAL_RE.finditer(html):
             if not singular(m.group(1)):
@@ -150,7 +168,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--project', required=True, help='carpeta con los .html o .dc.html')
     parser.add_argument('--allow-id', action='append', default=[], help='prefijo de código de negocio permitido (p. ej. SKU)')
-    parser.add_argument('--skip', action='append', default=[], help='checks a saltar: ids nested flex menus tokens links plural')
+    parser.add_argument('--skip', action='append', default=[], help='checks a saltar: ids nested flex menus tokens links plural before')
     parser.add_argument('boards', nargs='*')
     args = parser.parse_args()
     project = pathlib.Path(args.project)

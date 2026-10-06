@@ -8,7 +8,8 @@ Works with both prototype formats:
 Usage:
   python3 lint_boards.py --project <dir> [Board | file.html ...] [--ban "texto:motivo" ...]
 
-Without names it checks every *.html in the folder. A bare name (Main) means Main.dc.html.
+Without names it checks every *.html in the folder except the Antes-*.dc.html boards that build_canvas.py
+generates. A bare name (Main) means Main.dc.html.
 Prints "<file>: ok" or the problems found. Exit code 1 if any file has problems.
 """
 import argparse
@@ -20,6 +21,7 @@ EMOJI = re.compile('[\U0001F300-\U0001FAFF☀-⛿✀-➿]')
 ALLOWED_SYMBOLS = {'✓', '⌘', '⏎', '✦'}
 HOLE = re.compile(r'\{\{([^}]*)\}\}')
 VALID_HOLE = re.compile(r'^\s*[A-Za-z_$][\w$]*(\.[\w$]+)*\s*$|^\s*(true|false|null|-?\d+(\.\d+)?)\s*$')
+GENERATED = 'Antes-'  # tableros con las capturas del «antes», generados por build_canvas.py
 FONT_SIZE = re.compile(r'font-size:\s*(\d+(?:\.\d+)?)px')
 BANNED = {
     'linear-gradient': 'degradado',
@@ -36,7 +38,7 @@ BANNED_CANVAS = {
 
 def resolve(project: pathlib.Path, names: list) -> list:
     if not names:
-        return sorted(project.glob('*.html'))
+        return sorted(p for p in project.glob('*.html') if not p.name.startswith(GENERATED))
     return [project / (n if n.endswith('.html') else f'{n}.dc.html') for n in names]
 
 

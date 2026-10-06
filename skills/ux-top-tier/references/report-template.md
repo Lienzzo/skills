@@ -6,6 +6,7 @@ Estilo:
 - Frases cortas.
 - Cifras concretas («212 tickets abiertos», «7 pasos en 3 pantallas»).
 - Cada hallazgo con **dónde**, **qué se ve** y **qué hacer**.
+- En las fricciones que se repiten a diario, su coste: segundos × veces al día × personas («≈ 25 min al día por persona»).
 - Nada de adjetivos vacíos («mejorar la experiencia»).
 - Anonimiza a las personas reales.
 
@@ -18,7 +19,7 @@ Estilo:
 
 <Párrafo de método: entorno recorrido (y que fue solo lectura), cuántas entradas de menú, pantallas de detalle, formularios y flujos completos; con qué se contrastó (código, transcripciones, feedback).>
 
-Prototipo visual navegable con <N> pantallas rediseñadas y notas «Antes / Ahora»: <enlace>
+Prototipo visual navegable con <N> pantallas rediseñadas, cada una con la captura del producto real que sustituye y notas «Antes / Ahora»: <enlace>
 
 ## 1. Diagnóstico: los <N> problemas de fondo
 
@@ -93,9 +94,9 @@ Prototipo visual navegable con <N> pantallas rediseñadas y notas «Antes / Ahor
 
 <N> pantallas concentran la mayor parte de las horas del equipo. <Una frase sobre por qué merecen un listón más alto.>
 
-| Pantalla | Quién la usa y cuánto | Qué se repite | Cómo se quita la fricción |
-| --- | --- | --- | --- |
-| **<Bandeja>** | <Atención, varias horas al día> | <Leer, responder, cerrar> | <Borrador con Tab; plantillas con /; resolver abre la siguiente…> |
+| Pantalla | Quién la usa y cuánto | Qué se repite | Coste de la fricción hoy | Cómo se quita la fricción |
+| --- | --- | --- | --- | --- |
+| **<Bandeja>** | <Atención, varias horas al día> | <Leer, responder, cerrar> | <3 clics y 2 pantallas × 150 al día ≈ 25 min por persona> | <Borrador con Tab; plantillas con /; resolver abre la siguiente…> |
 
 Reglas comunes, como criterios de aceptación para desarrollo:
 <Copia las 10 reglas de `intensive-use.md`.>

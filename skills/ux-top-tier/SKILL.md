@@ -1,11 +1,11 @@
 ---
 name: ux-top-tier
-description: "Senior UX/UI audit and «top tier» redesign of any software (admin, back-office, CRM, SaaS, dashboard, app or website), in the spirit of Linear and v0: frictionless, dense and calm, never the «vibecoding» look. It gathers context first (URL and environment, repo, roles, most-used screens, pains, brand), walks the real app and its code, and delivers a prioritised report, a clickable prototype with Before/After notes and a minimal-friction pass on high-use screens. Use it whenever someone asks to review, audit, improve or redesign a UX or UI, says flows are complex or confusing, asks for a mock or prototype, or mentions Linear, v0, top tier, frictionless or senior UX. Spanish triggers: «revisa la UX del admin», «audita la UI», «hazme un mock de cómo quedaría», «sin fricción», «que no parezca vibecoding». Instructions are written in Spanish; deliverables follow the user's language."
+description: "Senior UX/UI audit and «top tier» redesign of any software (admin, back-office, CRM, SaaS, dashboard, app or website), in the spirit of Linear and v0: frictionless, dense and calm, never the «vibecoding» look and never a reskin of the current UI. It gathers context first (URL and environment, repo, roles, most-used screens, pains, brand), walks the real app and its code, and delivers a prioritised report, a clickable prototype on a design canvas with a screenshot of the real «before» for every screen, and a minimal-friction pass on high-use screens. Use it whenever someone asks to review, audit, improve or redesign a UX or UI, says flows are complex or confusing, asks for a mock or prototype, or mentions Linear, v0, top tier, frictionless or senior UX. Spanish triggers: «revisa la UX del admin», «audita la UI», «hazme un mock de cómo quedaría», «sin fricción», «que no parezca vibecoding». Instructions are written in Spanish; deliverables follow the user's language."
 license: MIT
-compatibility: "Needs a browser the agent can drive (e.g. Claude in Chrome) to walk the app, plus Python 3 and Node for the QA scripts. The prototype is a single HTML page that works anywhere; on Claude Code with claude.ai artifacts it can use the Design canvas (.dc.html) instead."
+compatibility: "Needs a browser the agent can drive (e.g. Claude in Chrome) to walk the app and capture the «before» screens, plus Python 3 and Node for the QA scripts. On Claude Code with claude.ai artifacts the prototype is a Design canvas (.dc.html boards); elsewhere it is a single HTML page that works anywhere."
 metadata:
   author: Lienzzo
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # UX top tier: auditoría senior, prototipo y fricción mínima
@@ -13,12 +13,28 @@ metadata:
 Convierte «los usuarios dicen que esto es complicado» en entregables que un equipo puede ejecutar, en cualquier software:
 
 1. **Informe de auditoría** priorizado, con evidencia, causas de fondo, flujos de principio a fin, plan por fases y métricas.
-2. **Prototipo visual navegable** de todas las pantallas rediseñadas, con una nota «Antes / Ahora» en cada una.
+2. **Prototipo visual navegable** de todas las pantallas rediseñadas, en un lienzo de diseño. Cada pantalla lleva encima la **captura del producto real que sustituye** («antes») y una nota «Antes / Ahora».
 3. **Pulido de fricción mínima** en las pantallas donde el equipo o los clientes pasan más horas.
 
 El listón es explícito: **no basta con «decente»**. Se busca la sensación de Linear y v0: densa, calmada, rápida, con teclado y sin adornos, con un pequeño toque de la identidad del producto. Piensa como un diseñador de UX senior: **tareas y causas raíz**, no gustos.
 
 Responde y escribe los entregables en el idioma del usuario, aunque estas instrucciones estén en español.
+
+## Postura: exigencia de diseñador de producto senior
+
+Esta skill no «mejora» la interfaz que hay: la **rediseña al nivel de los mejores productos de trabajo**. Tres reglas mandan en todas las fases.
+
+**1. La UI actual es evidencia, no referencia.** Lo que ves en el repo y en el navegador te dice qué tareas existen, qué datos hay y dónde duele. Casi nunca te dice cómo debería ser: lo más probable es que no sea óptima, y por eso te han llamado.
+- No calques su navegación, su jerarquía, sus componentes, sus modales ni el orden de sus campos. Nada se hereda por defecto, y «ya estaba así» no es un argumento.
+- Parte de la tarea: «si el equipo de Linear o de v0 tuviera que resolver esto desde cero, ¿qué haría?». Solo después mira qué se puede aprovechar.
+- Si el resultado es la pantalla actual con otra capa de pintura, no está rediseñado. La captura del «antes» sirve para comprobarlo.
+- Del repo se respetan los tokens, la marca, el presupuesto de motion y los contratos de UX: son restricciones, no el diseño. Si el sistema de diseño impide un resultado top tier, dilo en el informe con una propuesta en vez de bajar el listón en silencio.
+
+**2. Diseña para quien lo usa ocho horas al día.** Ponte en la piel de la persona que va a pasar jornadas enteras, durante años, en estas pantallas. Para ella no existe la fricción pequeña: cada clic, espera, modal, scroll o dato que hay que recordar se multiplica por cientos de repeticiones al día y acaba siendo un dolor constante.
+- Haz la cuenta: **segundos perdidos × veces al día × personas × días laborables**. 3 s de más en algo que se hace 200 veces al día son 10 min diarios por persona, unas 40 h al año.
+- Repite cada tarea diez veces seguidas, primero en la app real y luego sobre tu diseño. Lo que molesta a la décima vez es lo que hay que quitar.
+
+**3. Sé implacable con tu propio trabajo.** Antes de dar una pantalla por buena, revísala como el diseñador de producto más exigente de Linear: ¿qué le haría torcer el gesto? ¿Algo parece plantilla o «vibecoded»? Arréglalo y vuelve a mirar. La primera versión casi nunca es la buena, y «decente» es un suspenso.
 
 ## Modo rápido (petición acotada)
 
@@ -36,7 +52,7 @@ Si piden revisar una sola pantalla, un componente o un detalle («revisa este fo
 | 0. Contexto | Brief del software: URL y entorno, repo, roles, pantallas clave, dolores, marca | `references/intake.md` |
 | 1. Descubrimiento | Recorrido real por tareas, con fricción medida y evidencias | `references/senior-lens.md` |
 | 2. Informe | Informe en el repo + documento compartible | `references/report-template.md` |
-| 3. Prototipo | Página HTML o lienzo con todas las pantallas y notas «Antes / Ahora» | `references/design-language.md`, `references/prototype-canvas.md` |
+| 3. Prototipo | Lienzo de diseño (o página HTML) con todas las pantallas, la captura del «antes» y las notas «Antes / Ahora» | `references/design-language.md`, `references/prototype-canvas.md` |
 | 4. Uso intensivo | Pantallas clave con trabajo en serie, deshacer, teclado, acciones en línea… | `references/intensive-use.md` |
 | 5. Calidad | Ningún fallo visual ni dato contradictorio | `references/qa-checklist.md`, `scripts/` |
 
@@ -46,7 +62,7 @@ Las rutas `references/`, `scripts/` y `assets/` son relativas a la carpeta de es
 
 Al empezar cada fase y cuando algo tarde, avisa al usuario en una línea.
 
-**Herramientas.** La skill nombra las de Claude Code: navegador con Claude in Chrome, `AskUserQuestion`, artefactos, subagentes y `SendMessage`. En otro agente, usa su equivalente. Si no hay navegador, pide capturas o un vídeo del recorrido y avisa de que la evidencia es indirecta. Si no hay artefactos, el prototipo es una página HTML local o desplegada, a partir de `assets/prototype-template.html`.
+**Herramientas.** La skill nombra las de Claude Code: navegador con Claude in Chrome, `AskUserQuestion`, artefactos, subagentes y `SendMessage`. En otro agente, usa su equivalente. Si no hay navegador, pide capturas o un vídeo del recorrido y avisa de que la evidencia es indirecta. Si no hay artefactos de claude.ai, el prototipo es una página HTML local o desplegada, a partir de `assets/prototype-template.html`.
 
 ## Fase 0 · Contexto del software (obligatoria)
 
@@ -79,8 +95,8 @@ Cada software es distinto. **No empieces el recorrido sin contexto.** Sigue `ref
 **Seguridad, siempre:**
 - **Producción es de solo lectura.** No crees, guardes, envíes, archives ni borres nada. Puedes abrir formularios y modales para verlos, pero ciérralos sin enviar. Un error en una consulta de solo lectura es un hallazgo, no algo que «arreglar».
 - **Credenciales.** La sesión la abre el usuario: nunca escribas contraseñas.
-- **Datos personales.** Anonimiza en el informe a las personas reales. El prototipo usa datos ficticios.
-- **Sistema de diseño del repo.** Si el repo tiene uno (o un presupuesto de motion o contratos de UX), **manda sobre el lenguaje por defecto de esta skill**.
+- **Datos personales.** Anonimiza en el informe a las personas reales. El prototipo usa datos ficticios. Las capturas del «antes» son del producto real: enmascara los datos personales en la pestaña antes de capturar (`assets/mask-pii.js`) y revisa cada imagen antes de publicarla.
+- **Sistema de diseño del repo.** Si el repo tiene uno (o un presupuesto de motion o contratos de UX), **manda sobre el lenguaje por defecto de esta skill** en tokens, marca, motion y contratos. No manda sobre la estructura de las pantallas actuales, que se rediseñan (ver «Postura»).
 
 ## Fase 1 · Descubrimiento con mirada senior
 
@@ -105,13 +121,14 @@ Objetivo: entender el producto mejor que quien lo diseñó, con evidencia y fric
    - datos de prueba;
    - ortografía;
    - accesibilidad básica: contraste, foco visible, etiquetas en los campos y uso con teclado.
-4. **Clasifica** cada hallazgo:
+4. **Captura el «antes»** de cada pantalla que vas a rediseñar, y de los modales y formularios clave, mientras la recorres. Usa la misma ventana para todas y un estado de un día normal (ni cargando ni vacío). Enmascara los datos personales y guarda cada captura en `antes/<pantalla>.png`, junto al prototipo. El detalle está en `references/prototype-canvas.md`, § 8.
+5. **Clasifica** cada hallazgo:
    - **P0:** impacto operativo o pérdida de confianza;
    - **P1:** fricción frecuente;
    - **P2:** pulido.
 
-   Prioriza por impacto × frecuencia y agrupa en **3–6 causas raíz**. Para cada causa, propone un cambio estructural y sus arreglos rápidos.
-5. **Confirma o corrige** la lista de pantallas de uso intensivo del brief con lo que has visto.
+   Prioriza por impacto × frecuencia y agrupa en **3–6 causas raíz**. Para cada causa, propone un cambio estructural y sus arreglos rápidos. En las fricciones de las pantallas de uso intensivo, anota su coste (segundos × veces al día × personas).
+6. **Confirma o corrige** la lista de pantallas de uso intensivo del brief con lo que has visto.
 
 ## Fase 2 · Informe
 
@@ -137,9 +154,18 @@ Cada hallazgo sigue la forma: **qué se ve → por qué importa → evidencia �
 
 Un mock independiente del software: sin lógica real, pero **navegable y con estado**, para que el equipo vea y toque cómo sería lo «top».
 
-- **Formato.** Elige uno de los dos (detalle en `references/prototype-canvas.md`):
-  - **Página HTML, en cualquier agente.** Parte de `assets/prototype-template.html`: una sola página sin dependencias, con barra lateral, pantallas por `#ruta`, estado, deshacer, atajos de teclado y panel de notas «Antes / Ahora». Añade una entrada a `screens` por cada pantalla.
-  - **Lienzo de diseño, en Claude Code con artefactos de claude.ai (tipo «Design»).** Llama primero a `Artifact` con `action: "quickstart"` e `intent: "design"` y parte de `assets/board-template.dc.html` y `assets/sidebar-template.dc.html`. Es un formato del propio producto y puede cambiar: si algo no cuadra con esta skill, mandan las instrucciones del tipo.
+- **Formato: lienzo «Design», siempre que haya artefactos de claude.ai.** El prototipo se crea como artefacto del tipo «Design» para que se vea como un canvas: todas las pantallas a la vista, cada una con su «antes» encima y sus notas debajo. El detalle está en `references/prototype-canvas.md`.
+  1. Llama a `Artifact` con `action: "quickstart"` e `intent: "design"`.
+  2. Crea el artefacto con el `type_url` que devuelva, un `title` y `auto_open: "after_first_write"`.
+  3. Parte de `assets/board-template.dc.html` y `assets/sidebar-template.dc.html`.
+
+  Es un formato del propio producto y puede cambiar: si algo no cuadra con esta skill, mandan las instrucciones del tipo. **Sin artefactos de claude.ai** (otro agente, o un despliegue propio), usa la página HTML: `assets/prototype-template.html`, una sola página sin dependencias con barra lateral, pantallas por `#ruta`, estado, deshacer, atajos, panel de notas y «Ver antes». Añade una llamada a `screen({...})` por pantalla.
+- **Captura del «antes» en cada pantalla.** Cada pantalla rediseñada enseña la pantalla real que sustituye, para comparar sin salir del prototipo:
+  - en el lienzo, un tablero «Antes» encima de cada pantalla, que genera `scripts/build_canvas.py` con las capturas subidas como assets del artefacto;
+  - en la página HTML, `before: 'antes/<id>.png'` en su `screen({...})`: «Ver antes» (⇧A) cambia la pantalla por la captura y la nota «Antes» la muestra en miniatura.
+
+  Si una pantalla nueva junta varias antiguas, lleva varias capturas, cada una con su etiqueta. Si no existía, su nota «Antes» dice dónde se hace hoy ese trabajo.
+- **Dirección: Linear y v0, no la UI actual** (ver «Postura»). Diseña cada pantalla desde la tarea. Mira la captura del «antes» para saber de dónde partes, nunca como plantilla.
 - **Lenguaje visual.** Sigue `references/design-language.md`:
   - grises neutros, tipografía de 13 px y barra lateral fija;
   - paneles con vista lateral, filtros en píldora y barra flotante de selección;
@@ -167,12 +193,12 @@ Un mock independiente del software: sin lógica real, pero **navegable y con est
 
   En las pantallas intensivas, el «Ahora» suma el bloque «Fricción mínima · uso intensivo».
 - **Orden.** Primero las pantallas de uso diario y después el resto, por temas.
-  - En la página HTML, con grupos en la barra lateral.
   - En el lienzo, con páginas temáticas, un título por fila y una nota introductoria. Genera el `canvas.json` con `scripts/build_canvas.py` (ejemplo en `assets/layout-example.json`).
+  - En la página HTML, con grupos en la barra lateral.
 
 ## Fase 4 · Pantallas de uso intensivo
 
-Rehaz las 8–14 pantallas donde más horas se pasan, con `references/intensive-use.md`:
+Rehaz las 8–14 pantallas donde más horas se pasan pensando en quien está delante de ellas toda la jornada (ver «Postura»), con `references/intensive-use.md`:
 
 - **trabajo en serie:** al resolver se abre solo lo siguiente;
 - **deshacer en vez de confirmar;**
@@ -195,10 +221,17 @@ python3 $S/scan_ui.py --project <carpeta> [archivos…]       # IDs técnicos, a
 node    $S/check_logic.js <carpeta> <Tableros…>             # solo lienzo: huecos que resuelven y manejadores sin errores
 ```
 
-Sin nombres de archivo, revisan todos los `.html` de la carpeta. En la página HTML, la lógica se comprueba en el navegador.
+Sin nombres de archivo, revisan todos los `.html` de la carpeta, salvo los tableros «Antes» que genera `build_canvas.py`. En la página HTML, `scan_ui.py` comprueba además que cada pantalla tenga su captura del «antes», y la lógica se comprueba en el navegador.
 
 Después:
-- **Revisión a tamaño real en el navegador**, pantalla por pantalla (en el lienzo, en su modo de juego): textos partidos, solapes, popovers que tapan contenido, avisos encima de botones.
+- **Revisión senior, pantalla por pantalla.** Es la última puerta (`references/qa-checklist.md`, § 2):
+  - compárala con su captura del «antes»: ¿se ha rediseñado o solo repintado?;
+  - cuenta los clics y teclas de su tarea principal, que deben bajar;
+  - piensa qué molestaría a quien la usa ocho horas al día;
+  - pregúntate si pasaría la revisión de diseño de Linear.
+
+  Lo que no pase, se rehace antes de seguir.
+- **Revisión a tamaño real en el navegador**, pantalla por pantalla (en el lienzo, en su modo de juego): textos partidos, solapes, popovers que tapan contenido, avisos encima de botones. Forma parte del encargo: dilo al usuario al empezar la fase 3 para que quede pedida, porque el tipo «Design» no revisa nada que no se haya pedido.
 - **Pasada de coherencia entre pantallas:**
   - contadores del menú iguales a la suma de las pestañas;
   - la misma persona con los mismos datos en todas partes;
@@ -238,9 +271,15 @@ Con `references/agent-briefs.md`:
 - **Clics en el lienzo.** En la vista de lienzo no llegan a los tableros: usa el modo de juego.
 - **`find`.** No ve dentro de un iframe (el lienzo o una página publicada); usa capturas y `zoom`.
 
+**Al capturar el «antes»:**
+- **Tamaño.** Fija la ventana (por ejemplo, 1440×900) antes de la primera captura y no la cambies: si no, las capturas no se pueden comparar.
+- **Repintado.** Algunas apps repintan la página y deshacen el enmascarado. `mask-pii.js` lo vuelve a aplicar solo, pero mira siempre la captura antes de guardarla.
+- **Imágenes en el lienzo.** Un tablero no carga una imagen por nombre de archivo ni como `data:`. Súbela como asset del artefacto y usa la `url` `/_blob/…` que devuelve.
+
 **Al publicar en el lienzo:**
 - **Publicación rechazada** porque el lienzo cambió (el editor normaliza las notas): lee la versión publicada, fusiona y vuelve a publicar.
 - **Por tandas.** Publica solo los tableros cambiados y nunca uno que otro agente esté escribiendo.
+- **Tableros «Antes».** Publícalos junto con el `canvas.json` que los coloca. Si sobra alguno de otra ejecución, quítalo publicándolo con `null`: todo `.dc.html` del lienzo se ve, esté o no en el índice.
 - **Al terminar,** deja `launch` en la primera página del lienzo.
 
 ## Entrega final
@@ -249,6 +288,7 @@ Breve y en el idioma del usuario:
 - qué se ha hecho;
 - enlaces al informe, al documento y al prototipo;
 - qué pantallas son de uso intensivo y qué cambió en ellas;
+- qué pantallas no tienen captura del «antes» y por qué;
 - qué se ha comprobado en el navegador y qué no;
 - cómo compartir el prototipo: por ejemplo, un artefacto de claude.ai es privado hasta compartirlo desde «Compartir».
 

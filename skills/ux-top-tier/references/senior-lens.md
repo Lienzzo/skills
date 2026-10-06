@@ -2,6 +2,13 @@
 
 Un análisis senior no lista «cosas feas». Explica **por qué** la gente se pierde, **cuánto** le cuesta cada tarea y **qué cambio estructural** elimina la causa. Usa esta guía en la fase 1 (descubrimiento) y para justificar cada propuesta.
 
+## 0. Siéntate en su silla
+
+- **La UI actual es evidencia, no referencia.** Recórrela para entender las tareas, los datos y los dolores, no para copiarla. Lo que hay casi nunca es lo óptimo: pregúntate siempre cómo lo resolverían Linear o v0 desde cero.
+- **Piensa en la persona que pasa ocho horas al día aquí.** Para ella una fricción pequeña no existe: un clic de más, una espera o un modal se repiten cientos de veces al día, todos los días, durante años.
+- **Pon cifra al dolor.** Coste = segundos perdidos × veces al día × personas × días laborables. Por ejemplo, 3 s de más × 200 veces al día son 10 min diarios por persona, unas 40 h al año. Esa cifra ordena las prioridades y convence más que cualquier adjetivo.
+- **Repite la tarea diez veces seguidas.** Lo que a la primera parece aceptable, a la décima molesta. Eso es lo que hay que eliminar.
+
 ## 1. Analiza por tareas, no por pantallas
 
 Para cada rol, lista sus 5–8 tareas diarias («responder a un cliente», «dar de alta», «corregir una entrega»). Recorre cada una de principio a fin en la app real y anota:
@@ -17,7 +24,9 @@ Para cada rol, lista sus 5–8 tareas diarias («responder a un cliente», «dar
 | Incertidumbre | ¿Sabe si funcionó? ¿Sabe qué pasará al pulsar? |
 | Recuperación | ¿Puede deshacer? ¿El error explica qué hacer? |
 
-Este recuento alimenta la tabla «Flujos de principio a fin» del informe y las métricas de antes y después.
+Este recuento alimenta la tabla «Flujos de principio a fin» del informe y las métricas de antes y después. En las tareas que se repiten a diario, añade cuántas veces al día se hacen: sin eso no se puede calcular el coste.
+
+Mientras recorres, captura el «antes» de cada pantalla que vas a rediseñar, con los datos personales enmascarados (`references/prototype-canvas.md`, § 8).
 
 ## 2. Taxonomía de fricción
 
@@ -65,4 +74,4 @@ Usa cuatro partes: **qué se ve → por qué importa → evidencia → acción**
 
 ## 6. Diseña la solución, no el parche
 
-Para cada causa raíz propone un **cambio estructural** (bandeja única, ficha 360, navegación por tareas, glosario) **y** sus **arreglos rápidos**, que se pueden hacer ya y no contradicen la estructura. El informe debe permitir empezar el lunes por los arreglos rápidos sin esperar al rediseño.
+No partas de la pantalla actual para retocarla: parte de la tarea y del estándar de Linear y v0, y solo después mira qué se puede aprovechar. Para cada causa raíz propone un **cambio estructural** (bandeja única, ficha 360, navegación por tareas, glosario) **y** sus **arreglos rápidos**, que se pueden hacer ya y no contradicen la estructura. El informe debe permitir empezar el lunes por los arreglos rápidos sin esperar al rediseño.

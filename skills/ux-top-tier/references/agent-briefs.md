@@ -39,6 +39,9 @@ Amplíala cada vez que un agente fije un dato que otros vayan a mostrar.
 ## Bloque fijo 3 · Reglas aprendidas
 
 ```
+- La UI actual (repo y app) es evidencia de tareas y datos, NO la referencia. No calques su navegación, jerarquía, componentes, modales ni orden de campos: rediseña desde la tarea, con Linear y v0 como dirección. La captura del «antes» es para saber de dónde partes, no una plantilla.
+- Diseña para alguien que pasa 6–8 h al día en esta pantalla: cada clic, espera, modal o dato que recordar se multiplica por cientos de veces al día. Quita toda fricción que no sea imprescindible.
+- Listón: que pase la revisión de diseño de Linear. Antes de terminar, revisa cada tablero como el diseñador de producto más exigente, apunta lo que aún molestaría y arréglalo. «Decente» no vale.
 - Lenguaje Linear/v0. PROHIBIDO: tarjetas con icono decorativo, banners de color, emoji, degradados, antetítulos en mayúsculas, titulares grandes, sombras gruesas.
 - Ningún ID técnico visible (nada tipo «CLS-218», «PER-0931»); usa una ruta legible.
 - En un contenedor display:flex, no mezcles texto literal y {{hueco}} como hijos directos (se pierde el espacio): envuelve el texto completo en <span> o calcúlalo entero.
@@ -58,6 +61,7 @@ Amplíala cada vez que un agente fije un dato que otros vayan a mostrar.
 PANTALLAS · <Sección>: <Tablero1>, <Tablero2>, <Tablero3>.
 Contexto del producto: <qué hace la sección, quién la usa>.
 Hallazgos del informe que deben resolverse aquí: <C3, T4, J1… con una línea cada uno>.
+Capturas del «antes» (míralas para saber de dónde partes, no para copiarlas): <Tablero1: antes/Tablero1.png, …>.
 Para cada tablero:
 - Diseño completo a 1440×900 con datos ficticios coherentes (hoja de verdad) y estados funcionales (pestañas, filtros, vista lateral, selección).
 - Enlaces reales a los tableros relacionados: <lista>.
@@ -72,7 +76,7 @@ En el lienzo, escribe notes/<agente>.json = {"<Tablero>.dc.html": {"title": "<n 
 
 ```
 PULIDO PROFUNDO · <Tablero> (<quién lo usa y cuánto: «el equipo de atención responde mensajes durante horas cada día»>).
-Objetivo: fricción mínima en una pantalla de uso intensivo. Reescribe <Tablero> manteniendo EXACTAMENTE el sistema visual, los datos coherentes y los enlaces existentes. Léelo primero.
+Objetivo: fricción mínima en una pantalla de uso intensivo. Ponte en la piel de quien la usa toda la jornada y cuenta lo que cuesta cada repetición. Reescribe <Tablero> manteniendo EXACTAMENTE el sistema visual, los datos coherentes y los enlaces existentes. Léelo primero.
 Qué debe tener (todo funcional con estado):
 - <Lista concreta según el patrón de references/intensive-use.md: trabajo en serie, deshacer, atajos, acciones en línea, valores por defecto, contadores vivos, estado vacío con resumen…>
 Añade 3–5 viñetas sobre la fricción eliminada. En el lienzo, en notes/polish-<nombre>.json = {"<Tablero>.dc.html": {"ahora_extra": "• …\n• …"}}; en la página HTML, al final de notes.ahora, bajo «FRICCIÓN MÍNIMA · uso intensivo».
