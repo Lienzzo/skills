@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Needs a browser the agent can drive (e.g. Claude in Chrome) to walk the app and capture the «before» screens, plus Python 3 and Node for the QA scripts. On Claude Code with claude.ai artifacts the prototype is a Design canvas (.dc.html boards); elsewhere it is a single HTML page that works anywhere."
 metadata:
   author: Lienzzo
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # UX top tier: auditoría senior, prototipo y fricción mínima
@@ -54,9 +54,21 @@ Si piden revisar una sola pantalla, un componente o un detalle («revisa este fo
 | 2. Informe | Informe en el repo + documento compartible | `references/report-template.md` |
 | 3. Prototipo | Lienzo de diseño (o página HTML) con todas las pantallas, la captura del «antes» y las notas «Antes / Ahora» | `references/design-language.md`, `references/prototype-canvas.md` |
 | 4. Uso intensivo | Pantallas clave con trabajo en serie, deshacer, teclado, acciones en línea… | `references/intensive-use.md` |
-| 5. Calidad | Ningún fallo visual ni dato contradictorio | `references/qa-checklist.md`, `scripts/` |
+| 5. Calidad | Bucle con agentes validadores hasta el nivel top tier, coherencia entre pantallas y auditoría final del artefacto en el navegador | `references/qa-checklist.md`, `references/agent-briefs.md`, `scripts/` |
 
-Con más de unas 15 pantallas, reparte las fases 3 y 4 entre subagentes con `references/agent-briefs.md`.
+**Multiagente para ir más rápido.** Si el entorno tiene subagentes (en Claude Code, la herramienta `Agent`), úsalos en todas las fases que se pueden repartir. Tú coordinas, integras y decides; ellos trabajan en paralelo con encargos autosuficientes (`references/agent-briefs.md`).
+
+| Fase | Qué se reparte | Qué haces tú |
+|---|---|---|
+| 1 | La lectura del código y la del contexto humano (transcripciones, tickets, feedback) | El recorrido en el navegador y las capturas del «antes» |
+| 3 | Oleadas de pantallas: 2–3 por agente y hasta 6–8 agentes a la vez | La hoja de verdad, los tableros de referencia, la integración y la publicación |
+| 4 | Una pantalla de uso intensivo por agente | Revisar cada entrega |
+| 5 | Los validadores de calidad y de UX/UI, en bucle | Triar y arreglar, la coherencia entre pantallas y la auditoría final en el navegador |
+
+- **Lo que necesita todo el contexto no se reparte:** el brief, el informe, la hoja de verdad, la coherencia entre pantallas y la auditoría final son tuyos.
+- **Un solo agente maneja el navegador: tú.** Los subagentes trabajan sobre archivos, scripts y las capturas que les pasas.
+- **Con menos de unas 6 pantallas,** un agente de más cuesta más de lo que ahorra: hazlo tú.
+- **Sin subagentes,** sigue el mismo proceso en serie.
 
 Las rutas `references/`, `scripts/` y `assets/` son relativas a la carpeta de esta skill. Claude Code indica esa ruta base al cargarla, y la skill puede estar en `~/.claude/skills/`, en `.claude/skills/` del repo o dentro de un plugin. En los encargos a subagentes, usa siempre la ruta absoluta.
 
@@ -100,7 +112,7 @@ Cada software es distinto. **No empieces el recorrido sin contexto.** Sigue `ref
 
 ## Fase 1 · Descubrimiento con mirada senior
 
-Objetivo: entender el producto mejor que quien lo diseñó, con evidencia y fricción medida. Sigue `references/senior-lens.md`.
+Objetivo: entender el producto mejor que quien lo diseñó, con evidencia y fricción medida. Sigue `references/senior-lens.md`. Con subagentes, lanza en paralelo los pasos 1 y 2 (`references/agent-briefs.md`, «Descubrimiento en paralelo») mientras tú haces el 3 y el 4.
 
 1. **Código.**
    - Rutas, navegación (cuenta entradas y niveles) y componentes de tabla, formulario, modal y estado vacío.
@@ -210,9 +222,11 @@ Rehaz las 8–14 pantallas donde más horas se pasan pensando en quien está del
 
 Todo funciona con estado en el prototipo. Márcalas con «· uso intensivo» en el prototipo y añade su sección al informe: la tabla de pantallas, las 10 reglas como criterios de aceptación y sus métricas.
 
-## Fase 5 · Calidad y coherencia (no la saltes)
+## Fase 5 · Validación en bucle y auditoría final (no la saltes)
 
-Aquí se separa «decente» de «top tier». Sigue `references/qa-checklist.md`:
+Aquí se separa «decente» de «top tier». Sigue `references/qa-checklist.md`, en este orden.
+
+**1. Scripts**, sobre los archivos:
 
 ```bash
 S=<carpeta de esta skill>/scripts   # la ruta base que indica el agente al cargar la skill
@@ -223,31 +237,49 @@ node    $S/check_logic.js <carpeta> <Tableros…>             # solo lienzo: hue
 
 Sin nombres de archivo, revisan todos los `.html` de la carpeta, salvo los tableros «Antes» que genera `build_canvas.py`. En la página HTML, `scan_ui.py` comprueba además que cada pantalla tenga su captura del «antes», y la lógica se comprueba en el navegador.
 
-Después:
-- **Revisión senior, pantalla por pantalla.** Es la última puerta (`references/qa-checklist.md`, § 2):
-  - compárala con su captura del «antes»: ¿se ha rediseñado o solo repintado?;
-  - cuenta los clics y teclas de su tarea principal, que deben bajar;
-  - piensa qué molestaría a quien la usa ocho horas al día;
-  - pregúntate si pasaría la revisión de diseño de Linear.
+**2. Bucle de validación hasta el nivel top tier.** Cuando lo consideres útil (siempre en el proceso completo con 6 o más pantallas, y siempre que dudes de que algo llegue al listón), somete el prototipo a agentes validadores nuevos, que no han construido las pantallas y miran con ojos frescos. Encargos y mecánica en `references/agent-briefs.md`, «Bucle de validación».
+- **Validador de calidad:** scripts, formato, datos frente a la hoja de verdad, estados, accesibilidad, textos y enlaces.
+- **Validador de UX/UI senior:** la revisión senior (`references/qa-checklist.md`, § 2) contra la captura del «antes» y las capturas actuales que le pasas. Comprueba si la pantalla se ha rediseñado o solo repintado, si su tarea principal cuesta menos clics, qué molestaría a quien la usa ocho horas al día y si pasaría la revisión de diseño de Linear.
 
-  Lo que no pase, se rehace antes de seguir.
-- **Revisión a tamaño real en el navegador**, pantalla por pantalla (en el lienzo, en su modo de juego): textos partidos, solapes, popovers que tapan contenido, avisos encima de botones. Forma parte del encargo: dilo al usuario al empezar la fase 3 para que quede pedida, porque el tipo «Design» no revisa nada que no se haya pedido.
-- **Pasada de coherencia entre pantallas:**
-  - contadores del menú iguales a la suma de las pestañas;
-  - la misma persona con los mismos datos en todas partes;
-  - horas compatibles con el mismo «ahora»;
-  - etapas idénticas;
-  - totales que suman.
+Cada ronda funciona así:
+1. Publicas y capturas las pantallas a validar.
+2. Los validadores trabajan en paralelo y devuelven hallazgos P0 (impide el top tier), P1 (se nota) o P2 (pulido), cada uno con un arreglo concreto.
+3. Tú trías y arreglas (o encargas) los P0 y P1.
+4. La ronda siguiente valida solo lo que ha cambiado.
+
+**Sin excederse:**
+- como mucho **3 rondas**;
+- para antes si una ronda no deja P0 ni P1, o si lo nuevo es de gusto, repite lo descartado o le da la vuelta a lo ya arreglado;
+- los P2 se arreglan en lote al final, sin otra ronda;
+- lo que siga abierto tras la tercera ronda se cuenta al usuario, con el motivo.
+
+Sin subagentes, haz tú las rondas con las mismas listas. Juzga cada pantalla mirando su captura, no releyendo tu código.
+
+**3. Pasada de coherencia entre pantallas** (tuya, con todo el contexto):
+- contadores del menú iguales a la suma de las pestañas;
+- la misma persona con los mismos datos en todas partes;
+- horas compatibles con el mismo «ahora»;
+- etapas idénticas;
+- totales que suman.
+
+**4. Auditoría final del artefacto en el navegador (lo último, siempre).** Con todo publicado, abre el artefacto en una pestaña nueva y recórrelo como lo hará quien lo reciba (`references/qa-checklist.md`, § 7):
+- en el lienzo, primero la vista de canvas: cada «antes» encima de su pantalla, y títulos y notas sin solapes;
+- después, el modo de juego, pantalla por pantalla y a tamaño real: textos partidos, solapes, popovers que tapan contenido, avisos encima de botones;
+- las acciones principales con su «Deshacer», los enlaces entre pantallas y al menos tres pantallas en modo oscuro;
+- la tarea principal de cada pantalla de uso intensivo, de principio a fin.
+
+Lo que falle se arregla, se publica y se vuelve a mirar solo esa pantalla. Al terminar, cierra la pestaña. Las revisiones en el navegador (las capturas del bucle y esta auditoría) forman parte del encargo: dilo al usuario al empezar la fase 3 para que queden pedidas, porque el tipo «Design» no revisa nada que no se haya pedido.
 
 ## Trabajo con subagentes
 
 Con `references/agent-briefs.md`:
-- **Propiedad estricta de archivos.** Cada agente escribe solo sus tableros y su archivo de notas.
+- **Constructores y validadores, distintos.** Quien construye puede heredar tu contexto (en Claude Code, `fork`). Quien valida es un agente nuevo, sin tu sesgo de autor, que recibe solo lo necesario para juzgar.
+- **Propiedad estricta de archivos.** Cada agente escribe solo sus tableros y su archivo de notas. Los validadores no editan nada: devuelven hallazgos.
 - **Contexto en cada encargo.** Brief, hoja de verdad y reglas aprendidas.
 - **Verificación antes de terminar,** con los scripts.
-- **Integración tuya.** Tú validas, corriges las incoherencias entre tableros, publicas y revisas en el navegador.
+- **Integración tuya.** Tú trías los hallazgos, corriges las incoherencias entre tableros, publicas y revisas en el navegador.
 - **Coherencia en caliente.** Si un agente fija datos que otro, todavía en marcha, va a mostrar, avísale (en Claude Code, con `SendMessage`).
-- **La revisión final de coherencia la haces tú.**
+- **La coherencia final y la auditoría final en el navegador las haces tú.**
 
 ## Lecciones aprendidas (evita repetirlas)
 
@@ -289,7 +321,8 @@ Breve y en el idioma del usuario:
 - enlaces al informe, al documento y al prototipo;
 - qué pantallas son de uso intensivo y qué cambió en ellas;
 - qué pantallas no tienen captura del «antes» y por qué;
-- qué se ha comprobado en el navegador y qué no;
+- cuántas rondas de validación hubo y qué quedó abierto, con el motivo;
+- qué se comprobó en la auditoría final en el navegador y qué no;
 - cómo compartir el prototipo: por ejemplo, un artefacto de claude.ai es privado hasta compartirlo desde «Compartir».
 
 Si hay memoria persistente, guarda dónde quedan el informe, el brief y el prototipo.

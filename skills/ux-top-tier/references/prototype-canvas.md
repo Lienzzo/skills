@@ -123,7 +123,7 @@ Campos observados (consérvalos desde el `canvas.json` publicado):
 - Antes de cada tanda de clics, haz una captura nueva: si cambia el tamaño de la ventana, cambian las coordenadas.
 - La herramienta `find` no ve dentro del iframe; usa capturas y `zoom` para revisar detalles.
 - La consola del artefacto no suele ser accesible. Para depurar la lógica, usa `scripts/check_logic.js` en node.
-- **Al terminar:** deja `launch` en la primera página del lienzo, publica el `canvas.json` final y cierra la pestaña que abriste.
+- **Al terminar:** deja `launch` en la primera página del lienzo, publica el `canvas.json` final y haz la auditoría final sobre el artefacto publicado (`references/qa-checklist.md`, § 7). Después, cierra la pestaña que abriste.
 
 ## 7. Página HTML (sin artefactos de claude.ai)
 

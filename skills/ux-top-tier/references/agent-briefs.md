@@ -1,6 +1,33 @@
 # Encargos para subagentes
 
-Para 20 o más pantallas, reparte el trabajo en oleadas de 6–8 subagentes (en Claude Code, `fork`, que hereda el contexto). Tú integras, validas, publicas y revisas en el navegador. Cada encargo es autosuficiente y lleva tres bloques fijos: **propiedad de archivos**, **hoja de verdad** y **reglas aprendidas**.
+Si el entorno tiene subagentes, reparte el trabajo para ir más rápido (tabla «Multiagente» en `SKILL.md`):
+
+- **Descubrimiento (fase 1):** dos lectores en paralelo mientras tú recorres la app.
+- **Construcción (fases 3 y 4):** oleadas de 6–8 agentes, con 2–3 pantallas cada uno, o una pantalla de uso intensivo. En Claude Code, `fork`, que hereda el contexto.
+- **Validación (fase 5):** validadores nuevos en cada ronda del bucle. En Claude Code, un agente nuevo y no `fork`, para que no herede tu sesgo de autor.
+
+Tú integras, decides, publicas y manejas el navegador; ningún subagente lo toca. Cada encargo es autosuficiente. Los de construcción llevan tres bloques fijos: **propiedad de archivos**, **hoja de verdad** y **reglas aprendidas**.
+
+## Encargo · Descubrimiento en paralelo (fase 1)
+
+```
+LECTURA DEL CÓDIGO · <producto>. Repo: <ruta>. UI en: <rutas>. No edites nada.
+Devuelve, en menos de 400 palabras:
+- mapa de navegación: entradas de menú, niveles y rutas de cada pantalla;
+- componentes de tabla, formulario, modal y estado vacío, y dónde se repiten o se contradicen;
+- textos de error, enums o IDs que llegan a la interfaz, con archivo y línea;
+- contratos de UX y sistema de diseño (tokens, presupuesto de motion, reglas en AGENTS.md o CLAUDE.md);
+- sospechas de fricción que el código deja ver (pasos de más, modales para lo frecuente, formularios sin valores por defecto).
+```
+
+```
+LECTURA DEL CONTEXTO HUMANO · <producto>. Fuentes: <transcripciones, tickets, feedback, notas>. No edites nada.
+Devuelve, en menos de 400 palabras:
+- los dolores reportados, con quién lo dice y una cita corta (personas anonimizadas: «una persona de soporte»);
+- las tareas diarias de cada rol y cuántas veces al día se repiten, si se dice;
+- el vocabulario del negocio y los términos que se confunden;
+- lo que ya se ha prometido o descartado.
+```
 
 ## Bloque fijo 1 · Propiedad y verificación
 
@@ -83,9 +110,64 @@ Añade 3–5 viñetas sobre la fricción eliminada. En el lienzo, en notes/polis
 <Bloques fijos 1, 2 y 3>
 ```
 
+## Bucle de validación (fase 5)
+
+Validadores que no han construido las pantallas las revisan, tú arreglas y se repite hasta el nivel top tier, **sin excederse**.
+
+### Encargo · Validador de calidad
+
+```
+VALIDACIÓN DE CALIDAD · ronda <n> de 3 · <Tableros>.
+Eres un revisor externo: no has construido estas pantallas y tu trabajo es encontrar lo que impide el nivel top tier, no aprobarlas.
+Raíz: <ruta local del prototipo>. Lee <carpeta de la skill>/references/qa-checklist.md (§ 1, 3, 4 y 5) y references/design-language.md.
+Ejecuta lint_boards.py, scan_ui.py y check_logic.js sobre tus tableros y revisa a mano:
+- datos frente a la hoja de verdad: personas, cifras, contadores, totales, horas y etapas;
+- estados: vacío, carga, error, éxito, hover y foco;
+- accesibilidad básica, textos, plurales y enlaces entre pantallas;
+- capturas actuales (<rutas .png>): textos partidos, solapes, popovers o avisos que tapan algo.
+No edites nada. Responde SOLO con la lista de hallazgos, de más a menos grave:
+  [P0|P1|P2] <Tablero> · <qué falla, con el texto o la línea exacta> → <arreglo concreto>
+P0 = rompe algo o impide el top tier; P1 = se nota y molesta; P2 = pulido. Si no hay nada: «Sin hallazgos».
+Ya descartado (no lo repitas): <lista con motivo, o «nada»>.
+<Bloque fijo 2 · Hoja de verdad>
+```
+
+### Encargo · Validador de UX/UI senior
+
+```
+VALIDACIÓN UX/UI SENIOR · ronda <n> de 3 · <Tableros>.
+Eres el diseñador de producto más exigente de Linear revisando el trabajo de otro. No lo has hecho tú: busca por qué todavía no es top tier.
+Producto y usuarios: <qué hace, roles y cuántas horas pasan en cada pantalla>.
+Para cada tablero tienes su código (<ruta>), su captura actual (<ruta .png>), la captura del «antes» (<ruta .png>) y los hallazgos del informe que debía resolver (<C3, T4…>). Mira las imágenes.
+Aplica <carpeta de la skill>/references/qa-checklist.md § 2, references/design-language.md y, en las de uso intensivo, references/intensive-use.md:
+- ¿Rediseñada o repintada respecto al «antes»? ¿Copia la navegación, el orden o los modales de la UI actual?
+- Clics, teclas, pantallas y esperas de la tarea principal, antes y ahora.
+- Qué molestaría a quien la usa ocho horas al día a la décima repetición, con su coste (segundos × veces al día).
+- ¿Algo parece plantilla, genérico o «vibecoded»? ¿Pasaría la revisión de diseño de Linear?
+- Jerarquía, densidad, alineación, copy y estados.
+No edites nada. Responde con la lista de hallazgos en el mismo formato que el validador de calidad. Nada de gustos sin una tarea detrás: cada hallazgo dice a quién le cuesta qué.
+Ya descartado (no lo repitas): <lista con motivo, o «nada»>.
+```
+
+### Cómo gira cada ronda
+
+1. **Prepara.** Publica los tableros y captura cada pantalla que se va a validar (modo de juego, `save_to_disk`). Sin navegador, los validadores trabajan solo sobre el código y lo dicen.
+2. **Lanza en paralelo.** Un validador de calidad y uno de UX/UI por cada grupo de hasta unas 8 pantallas.
+3. **Tría.** Acepta lo que mejora la tarea o acerca al listón. Descarta, con motivo, lo que contradice el brief, el sistema de diseño del repo o la hoja de verdad. Junta los duplicados.
+4. **Arregla** los P0 y P1, tú o el agente que construyó la pantalla (con `SendMessage` si sigue disponible, o con un encargo nuevo con la lista exacta). Respeta la propiedad de archivos.
+5. **Siguiente ronda,** con validadores nuevos y solo las pantallas que han cambiado. Añade una pasada de coherencia si los arreglos tocan datos compartidos.
+
+### Cuándo parar (sin excederse)
+
+- Como mucho **3 rondas**.
+- Para antes si una ronda no deja P0 ni P1.
+- Para también si los hallazgos nuevos son de gusto, repiten lo descartado o le dan la vuelta a lo ya arreglado: eso es ruido, no calidad.
+- Los P2 se arreglan en lote tras la última ronda, sin volver a validar.
+- Lo que siga abierto tras la tercera ronda va a la entrega, con el motivo.
+
 ## Durante la ejecución
 
 - **Coherencia en caliente.** Si un agente termina y fija datos que otro agente en marcha mostrará, mándaselos (en Claude Code, con `SendMessage`), por ejemplo: «Nueva alta propone a tres leads concretos en la etapa Interesado; muéstralos con los mismos datos». Escríbelo como un ajuste concreto y verificable.
 - **Revisa cada entrega:** linter, `scan_ui.py`, `check_logic.js`, publicación de ese tablero y revisión a tamaño real en el navegador.
 - **Al terminar, comprueba tus propias ediciones.** Si un agente retoma el trabajo tras tu mensaje, puede reescribir el archivo después de que tú lo hayas tocado.
-- **No delegues la revisión final.** La pasada de coherencia entre pantallas la haces tú, con todo el contexto.
+- **No delegues el final.** La pasada de coherencia entre pantallas y la auditoría final del artefacto en el navegador las haces tú, con todo el contexto.

@@ -18,7 +18,9 @@ Senior UX/UI audit and «top tier» redesign of any software (admin, back-office
 2. **A clickable prototype** of every redesigned screen. Each one carries a screenshot of the real screen it replaces («before», with personal data masked) and Before/After notes. On Claude Code with claude.ai artifacts it is a Design canvas, with each «before» board right above its redesign; elsewhere, a single HTML page with no dependencies (state, undo, real keyboard shortcuts, ⌘K, light and dark themes and a «See before» toggle).
 3. **A minimal-friction pass on high-use screens**: serial work that opens the next item, undo instead of confirm, visible shortcuts, inline actions, useful defaults and live counters.
 
-**How it works.** It gathers context first (URL and environment, repo, roles, most-used screens, reported pains, brand), walks the real app by task, captures each screen it will redesign and reads the code, then measures friction and groups findings into root causes. For a narrow request («review this form») it runs a quick mode and answers in chat.
+**How it works.** It gathers context first (URL and environment, repo, roles, most-used screens, reported pains, brand), walks the real app by task, captures each screen it will redesign and reads the code, then measures friction and groups findings into root causes.
+
+**Multi-agent and validated.** When the agent has subagents, it parallelises discovery, screen building and high-use polish. Fresh validator agents (quality and senior UX/UI) then review the prototype in a loop of up to three rounds, which stops early once no blocking findings remain. Last of all, the agent audits the published artifact in the browser, screen by screen. For a narrow request («review this form») it runs a quick mode and answers in chat.
 
 **Safety.** Production is read-only: it opens forms and dialogs but never submits, saves or deletes. The user logs in; the agent never types credentials. Real people are anonymised in the report, the prototype uses fictional data, and personal data is masked in the browser tab (nothing is saved) before each «before» screenshot.
 
@@ -39,7 +41,7 @@ skills/ux-top-tier/
 
 ### En español
 
-Auditoría UX/UI de nivel senior y rediseño «top tier» de cualquier software, inspirado en Linear y v0: sin fricción y sin estética «vibecoding». La UI actual es evidencia, no referencia: cada pantalla se rediseña desde la tarea, pensando en quien la usa ocho horas al día. Reúne el contexto, recorre la app real y el código, y entrega un informe priorizado, un prototipo navegable en un lienzo de diseño (con la captura del «antes» encima de cada pantalla y notas «Antes / Ahora») y un pulido de fricción mínima en las pantallas de uso intensivo.
+Auditoría UX/UI de nivel senior y rediseño «top tier» de cualquier software, inspirado en Linear y v0: sin fricción y sin estética «vibecoding». La UI actual es evidencia, no referencia: cada pantalla se rediseña desde la tarea, pensando en quien la usa ocho horas al día. Reúne el contexto, recorre la app real y el código, y entrega un informe priorizado, un prototipo navegable en un lienzo de diseño (con la captura del «antes» encima de cada pantalla y notas «Antes / Ahora») y un pulido de fricción mínima en las pantallas de uso intensivo. Si hay subagentes, reparte el trabajo en paralelo y valida el prototipo con agentes revisores en bucle (tres rondas como mucho) antes de auditar el artefacto publicado en el navegador.
 
 Instalación: `npx skills add Lienzzo/skills --skill ux-top-tier`
 

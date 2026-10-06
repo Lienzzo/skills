@@ -2,6 +2,8 @@
 
 Pasa esta lista antes de dar el prototipo por terminado. Lo que distingue un prototipo «top tier» de uno «decente» es que nada desentona al tocarlo.
 
+Los validadores del bucle (`references/agent-briefs.md`, «Bucle de validación») la usan como guion: el de calidad, las secciones 1, 3, 4 y 5, y el de UX/UI, la 2. La auditoría final del artefacto en el navegador (sección 7) es lo último que haces tú.
+
 ## 1. Automática (scripts)
 
 ```bash
@@ -17,9 +19,9 @@ Además:
 - **Lógica (página HTML):** en el navegador, cada acción, su «Deshacer» y cada atajo.
 - **Capturas del «antes»:** en la página, `scan_ui.py` avisa de las pantallas sin `before` y de las capturas que no existen. En el lienzo, `build_canvas.py` avisa de las pantallas sin captura que no están en `"new"`.
 
-## 2. Revisión senior (la última puerta, pantalla por pantalla)
+## 2. Revisión senior (pantalla por pantalla)
 
-Hazla antes de la revisión visual. Si una pantalla no pasa, se rehace; no se pule.
+La hace el validador de UX/UI en cada ronda del bucle, o tú si no hay subagentes, mirando la captura de la pantalla y no su código. Si una pantalla no pasa, se rehace; no se pule.
 
 - [ ] **Rediseñada, no repintada.** Ponla al lado de su captura del «antes». Si se reconoce la misma estructura (la misma navegación, el mismo orden, los mismos modales) con otro estilo, no está rediseñada.
 - [ ] **Menos coste por tarea.** Cuenta clics, teclas, pantallas y esperas de su tarea principal, antes y ahora. Deben bajar, y en las de uso intensivo, a un clic o una tecla por elemento.
@@ -75,5 +77,20 @@ Haz una tabla mental o un `grep` de cada persona y cifra recurrente:
 - [ ] Ninguna captura muestra datos personales reales: revisadas una a una.
 - [ ] Notas de uso intensivo con el bloque «Fricción mínima».
 - [ ] Informe y documento actualizados con el enlace al prototipo y la sección de uso intensivo.
+- [ ] Bucle de validación cerrado en 3 rondas como mucho: sin P0 ni P1, o con lo que queda abierto explicado.
+- [ ] Auditoría final (sección 7) hecha sobre la versión publicada, después del último cambio.
 - [ ] Pestañas del navegador que abriste, cerradas.
-- [ ] Mensaje final: qué se hizo, enlaces, qué se comprobó en el navegador y qué no, y que el prototipo es privado.
+- [ ] Mensaje final: qué se hizo, enlaces, cuántas rondas de validación hubo y qué quedó abierto, qué se comprobó en el navegador y qué no, y que el prototipo es privado.
+
+## 7. Auditoría final del artefacto publicado (lo último)
+
+Hazla tú, con todo publicado y después del último arreglo, en una pestaña nueva y como lo verá quien lo reciba. No revises tu copia local: revisa el artefacto.
+
+- [ ] **Vista de canvas** (en el lienzo): cada tablero «Antes» encima de su pantalla, con el título correcto; filas, títulos y notas sin solapes; la nota introductoria al principio; `launch` en la primera página.
+- [ ] **Modo de juego, pantalla por pantalla:** las comprobaciones visuales de la sección 3 a tamaño real.
+- [ ] **Interacción:** cada acción principal con su «Deshacer», los filtros, la vista lateral y los enlaces entre pantallas, incluida la barra lateral.
+- [ ] **Uso intensivo:** la tarea principal de cada pantalla, de principio a fin, contando clics y teclas.
+- [ ] **Modo oscuro** en al menos tres pantallas.
+- [ ] **Capturas del «antes»** visibles, con el tamaño correcto y sin datos personales.
+
+Lo que falle se arregla, se publica y se vuelve a mirar solo esa pantalla. Si aparece algo estructural, no abras otra ronda del bucle sin decírselo al usuario. Al terminar, cierra la pestaña y anota qué no has podido comprobar (por ejemplo, atajos de teclado que el entorno no deja probar).
