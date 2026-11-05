@@ -9,9 +9,9 @@ export function build() {
   root = $('#s3')
   root.innerHTML = `
     <div class="s3-mark"></div>
-    <div class="s3-word">${linesHTML([['Product']])}</div>
-    <div class="s3-tag">${linesHTML([['One useful line, not a slogan.']])}</div>
-    <div class="s3-url">product.com</div>`
+    <div class="s3-word" data-read>${linesHTML([['Product']])}</div>
+    <div class="s3-tag" data-read>${linesHTML([['One line, not a slogan.']])}</div>
+    <div class="s3-url" data-read>product.com</div>`
   mark = $('.s3-mark', root)
   logo = makeLogo(mark, { glow: '' })
   word = $$('.s3-word .wd', root)

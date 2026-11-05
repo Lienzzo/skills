@@ -5,8 +5,9 @@
 //   node render.mjs sheet 1 2.5 4 … [--out f.png]           → one labelled contact sheet
 //   node render.mjs sheet --from 9.6 --to 10.4 --step 0.05  (filmstrip across a cut)
 //   node render.mjs review [--scene id] [--tag name]        → out/review/<tag>/: a sheet per scene,
-//                                                             a filmstrip per planned cut, phone-size
-//                                                             sheets, lint.md (off-frame text, seek order)
+//        [--phone-min 12]                                     a filmstrip per planned cut, phone-size
+//                                                             sheets, lint.md (off-frame text, seek order,
+//                                                             reading time of every data-read text)
 //   node render.mjs render [--workers 2] [--dsf 2] [--from 0 --to 12] [--name video] → out/<name>.mkv
 // FORMAT=9x16 node render.mjs … renders another format of the same timeline (see timeline.js).
 import http from 'node:http'
@@ -75,13 +76,23 @@ if (mode === 'serve') {
 }
 
 let pageErrors = 0
+// Wait until the page is really ready. `evaluate(() => window.__ready)` alone returns at once
+// if main.js hasn't run yet (a scene module with a top-level await delays it): the first frames
+// of every worker then came out black. Wait for __ready to exist, then for it to resolve; a
+// rejected __ready (a font or image that failed) aborts instead of rendering a broken frame.
+async function pageReady(page) {
+  await page.waitForFunction(() => window.__ready !== undefined && typeof window.__seek === 'function', null, { timeout: 60000 })
+  const ok = await page.evaluate(() => window.__ready)
+  if (ok !== true) throw new Error(`window.__ready resolved to ${JSON.stringify(ok)}, expected true`)
+}
+
 async function openPage(browser, url, dsf) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: dsf })
   const page = await ctx.newPage()
   page.on('console', (m) => m.type() === 'error' && (pageErrors++, console.error('[page]', m.text())))
   page.on('pageerror', (e) => (pageErrors++, console.error('[pageerror]', e.message)))
   await page.goto(url)
-  await page.evaluate(() => window.__ready)
+  await pageReady(page)
   const cdp = await ctx.newCDPSession(page)
   const shot = async (t, scale = 1) => {
     await page.evaluate((t) => window.__seek(t), t)
@@ -117,7 +128,7 @@ async function phoneSheets(shot, ts, dir) {
 // state behind (a style set in one branch and never reset).
 async function orderLint(page, shot, ts) {
   await page.reload()
-  await page.evaluate(() => window.__ready)
+  await pageReady(page)
   const fwd = new Map()
   for (const t of ts) fwd.set(t, await shot(t))
   const bad = []
@@ -131,7 +142,11 @@ async function orderLint(page, shot, ts) {
       // Big blurs (shadows) rasterise with ±1-level noise: count only pixels off by more than 3 %.
       fs.writeFileSync(fa, a)
       fs.writeFileSync(fb, b)
-      if (parseFloat(spawnSync('magick', ['compare', '-metric', 'AE', '-fuzz', '3%', fa, fb, 'null:'], { encoding: 'utf8' }).stderr) > 20) bad.push(t)
+      // AE prints "1234" (or "1234 (0.01)"); anything else means compare failed: never a silent pass.
+      const r = spawnSync('magick', ['compare', '-metric', 'AE', '-fuzz', '3%', fa, fb, 'null:'], { encoding: 'utf8' })
+      const ae = parseFloat(r.stderr)
+      if (!Number.isFinite(ae)) throw new Error(`magick compare failed at ${t} s: ${(r.error?.message || r.stderr || 'no output').trim()}`)
+      if (ae > 20) bad.push(t)
     }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
@@ -163,6 +178,150 @@ async function offFrameText(page, t) {
     }
     return [...new Set(hits)]
   }, { W, H })
+}
+
+// Reading lint. Every piece of text the viewer must read carries `data-read` (any value but
+// "0"); `data-read="0"` marks text that is not meant to be read (a UI's incidental labels, a
+// capture's chrome) and everything inside it. Sampled every 1/15 s from the DOM itself:
+// - a declared text counts as readable while its visible words are on screen at ≥ 0.85
+//   opacity (summed over its ancestors) and fully inside the frame; text that types or streams
+//   in counts from the frame its last word appears;
+// - each readable stretch must last ≥ 0.4 s per word + 0.5 s (SKILL.md);
+// - a text of 3+ words that lands while another one still needs its reading time is "two things
+//   to read at once";
+// - its size on a 390 px-wide phone (font size × camera scale × 390 / W);
+// - big text on screen that isn't declared at all is listed, and a scene that shows text but
+//   declares none is NOT CHECKED: never a pass.
+const READ_STEP = 1 / 15
+async function readProbe(page, t) {
+  await page.evaluate((t) => window.__seek(t), t)
+  return page.evaluate(({ W, H }) => {
+    const opacityOf = (el, stop) => {
+      let o = 1
+      for (let e = el; e && e !== stop; e = e.parentElement) o *= Number(getComputedStyle(e).opacity)
+      return o
+    }
+    const shown = (el) => el.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+    const inFrame = (r) => r.width > 0 && r.left >= -1 && r.top >= -1 && r.right <= W + 1 && r.bottom <= H + 1
+    const pxSize = (el) => {
+      const r = el.getBoundingClientRect()
+      const scale = el.offsetWidth ? r.width / el.offsetWidth : 1
+      return parseFloat(getComputedStyle(el).fontSize) * scale
+    }
+    // Global covers (the fade to black, a flash) are siblings, not ancestors: main.js reports them.
+    const veil = Math.min(1, Math.max(0, window.__veil?.() ?? 0))
+    const out = { declared: [], loose: [] }
+    window.__readIds ??= new WeakMap()
+    let next = window.__readNext ?? 0
+    for (const el of document.querySelectorAll('[data-read]')) {
+      if (el.dataset.read === '0' || el.parentElement?.closest('[data-read="0"]')) continue
+      if (!window.__readIds.has(el)) window.__readIds.set(el, next++)
+      const id = window.__readIds.get(el)
+      const label = el.dataset.read && el.dataset.read !== '1' ? el.dataset.read : (el.id || el.className || el.tagName).toString().slice(0, 40)
+      // Only the words that are actually visible (typed, streamed or revealed word by word).
+      // The frame test uses the boxes of those words, not the element's (a wide container
+      // can overhang the frame while its text sits inside).
+      const words = []
+      let inside = true
+      const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        const p = n.parentElement
+        if (!n.textContent.trim() || !shown(p) || opacityOf(p, el) < 0.5) continue
+        words.push(n.textContent)
+        const rg = document.createRange()
+        rg.selectNodeContents(n)
+        for (const b of rg.getClientRects()) if (b.width > 1 && !inFrame(b)) inside = false
+      }
+      const text = words.join(' ').replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim()
+      const ok = !!text && inside && shown(el) && opacityOf(el) * (1 - veil) >= 0.85
+      out.declared.push({ id, label, text, ok, px: ok ? pxSize(el) : 0 })
+    }
+    if (window.__readNext === undefined || next > window.__readNext) window.__readNext = next
+    // Big text nobody declared: words visible at ≥ 0.85 opacity and ≥ 3 % of the frame's width tall.
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const p = n.parentElement
+      const text = n.textContent.trim()
+      if (!text || !p || p.closest('[data-read]') || !shown(p)) continue
+      if (opacityOf(p) * (1 - veil) < 0.85 || pxSize(p) < W * 0.03) continue
+      const r = document.createRange()
+      r.selectNodeContents(n)
+      if (inFrame(r.getBoundingClientRect())) out.loose.push(text.slice(0, 50))
+    }
+    return out
+  }, { W, H })
+}
+
+// Same read if the text keeps its opening (it grows, a citation badge lands mid-sentence);
+// a different opening means the element now says something else.
+function sameRead(a, b) {
+  let i = 0
+  while (i < a.length && i < b.length && a[i] === b[i]) i++
+  return i >= Math.min(12, Math.floor(a.length / 2), b.length)
+}
+
+async function readingLint(page, scenes, phoneMin) {
+  const words = (s) => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
+  const lines = []
+  const runs = [] // { id, label, a, b, text, from, px, edge }
+  const loose = new Map()
+  const declaredIn = new Map(scenes.map(([id]) => [id, 0]))
+  // One continuous pass over the window (a text can stay on screen across a cut).
+  const a0 = Math.min(...scenes.map((s) => s[1]))
+  const b0 = Math.max(...scenes.map((s) => s[2]))
+  const sceneAt = (t) => (scenes.find(([, a, b]) => t >= a && t < b) ?? scenes[scenes.length - 1])[0]
+  const open = new Map()
+  for (const [k, t] of range(a0, b0 - 1e-6, READ_STEP).entries()) {
+    const sid = sceneAt(t)
+    const { declared, loose: lz } = await readProbe(page, t)
+    for (const s of lz) if (!loose.has(s)) loose.set(s, [sid, t])
+    for (const d of declared) {
+      if (d.ok) declaredIn.set(sid, declaredIn.get(sid) + 1)
+      let r = open.get(d.id)
+      if (d.ok && r && !sameRead(r.text, d.text)) {
+        runs.push(r) // the same element now says something else: that is a new read
+        open.delete(d.id)
+        r = undefined
+      }
+      if (d.ok && r) {
+        if (d.text !== r.text) r.from = t // still typing/streaming: the clock starts at its last word
+        r.text = d.text
+        r.b = t
+        r.px = Math.min(r.px, d.px)
+      } else if (d.ok) open.set(d.id, { id: d.id, label: d.label, a: t, b: t, from: t, text: d.text, px: d.px, edge: k === 0 && a0 > 0 })
+      else if (r) {
+        runs.push(r)
+        open.delete(d.id)
+      }
+    }
+  }
+  // Still on screen when the window ends: fine at the end of the film, unknown otherwise.
+  for (const r of open.values()) runs.push({ ...r, edge: r.edge || b0 < DURATION - 1e-6, tail: b0 >= DURATION - 1e-6 })
+  const short = [], small = [], crowd = []
+  for (const r of runs) {
+    const n = words(r.text)
+    if (!n) continue
+    const held = r.b - r.from + READ_STEP
+    const need = 0.4 * n + 0.5
+    if (held + READ_STEP / 2 < need && !r.edge) short.push(`- ${r.from.toFixed(2)}–${(r.b + READ_STEP).toFixed(2)} s · "${r.text.slice(0, 60)}" (${n} words): readable ${held.toFixed(2)} s, needs ${need.toFixed(1)} s`)
+    if (r.px * (390 / W) < phoneMin) small.push(`- ${r.from.toFixed(2)} s · "${r.text.slice(0, 50)}": ${(r.px * (390 / W)).toFixed(1)} px on a 390 px phone`)
+  }
+  const big = runs.filter((r) => words(r.text) >= 3).sort((x, y) => x.from - y.from)
+  for (let i = 0; i < big.length; i++)
+    for (let j = i + 1; j < big.length; j++) {
+      // The second one lands while the first still needs its reading time.
+      const due = big[i].from + 0.4 * words(big[i].text) + 0.5
+      if (big[j].id !== big[i].id && big[j].from < due && big[j].from <= big[i].b + READ_STEP)
+        crowd.push(`- ${big[j].from.toFixed(2)} s · "${big[j].text.slice(0, 40)}" arrives while "${big[i].text.slice(0, 40)}" still needs until ${due.toFixed(2)} s`)
+    }
+  const unchecked = [...declaredIn].filter(([sid, n]) => !n && [...loose.values()].some(([s]) => s === sid)).map(([sid]) => sid)
+  lines.push(`Rule: ≥ 0.4 s per word + 0.5 s, one thing to read at a time, ≥ ${phoneMin} px on a 390 px phone. Sampled every ${READ_STEP.toFixed(3)} s from the DOM (\`data-read\`).`, '')
+  lines.push(unchecked.length ? `**NOT CHECKED** — scenes with big text but no \`data-read\`: ${unchecked.join(', ')}. Declare what must be read (or \`data-read="0"\`) and rerun; this is not a pass.` : `Declared texts measured: ${runs.length}.`, '')
+  lines.push('### Too short to read', '', ...(short.length ? short : ['none']), '')
+  lines.push('### Two things to read at once', '', ...(crowd.length ? crowd : ['none']), '')
+  lines.push(`### Small on a phone (judge only if the film will be watched on phones)`, '', ...(small.length ? small : ['none']), '')
+  lines.push('### Big text not declared (mark it `data-read`, or `data-read="0"` if it is not meant to be read)', '', ...(loose.size ? [...loose].map(([s, [sid, t]]) => `- ${sid} ${t.toFixed(2)} s · "${s}"`) : ['none']))
+  return { lines, problems: short.length + crowd.length + unchecked.length + loose.size }
 }
 
 const { chromium } = await loadPlaywright()
@@ -208,6 +367,10 @@ if (mode === 'preview') {
     for (const t of range(a, b - 0.01, 0.25)) for (const s of await offFrameText(page, t)) seen.set(s, [...(seen.get(s) || []), t])
   if (!seen.size) lines.push('none')
   for (const [s, ts] of seen) lines.push(`- "${s}" at ${ts[0]}–${ts[ts.length - 1]} s`)
+  lines.push('', '## Lint: reading time', '')
+  const reading = await readingLint(page, scenes, Number(opt('phone-min', 12)))
+  lines.push(...reading.lines)
+  lines.splice(1, 0, reading.problems ? `**Reading lint: ${reading.problems} problem(s)** — fix them before the reviewer sees the pack (section at the end).` : 'Reading lint: clean (phone sizes, if any, are listed at the end).', '')
   if (pageErrors) lines.push('', `## ${pageErrors} page error(s) — see the console output`)
   fs.writeFileSync(path.join(dir, 'lint.md'), lines.join('\n') + '\n')
   console.log(lines.join('\n'))

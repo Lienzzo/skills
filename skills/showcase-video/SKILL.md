@@ -175,9 +175,17 @@ you resume after a context reset.
    - `scripts/new_project.sh ~/Videos/<product>-showcase` copies `template/`, a working
      12 s demo, into `src/` with git, and checks the tools (Playwright included).
    - Run the smoke test it prints.
-   - Save the approved plan as `src/STORYBOARD.md`: the chosen direction, the storyboard
-     table, the product facts and the formats. The reviewer prompt and a resumed session
-     read it from there.
+   - Save the approved plan as `src/STORYBOARD.md`. It holds:
+     - the chosen direction;
+     - the storyboard table;
+     - the product facts;
+     - the formats;
+     - a **Locked decisions** section: what the client approved or asked for, each with
+       its reason.
+
+     The reviewer prompt and a resumed session read it from there. When a review round
+     reverses an earlier call that was a matter of taste, add the call to Locked decisions:
+     reviewers get them as "do not reopen".
    - Set `DEFAULT_FORMAT` in `timeline.js` to the main format (`16x9`, `9x16`, `1x1`,
      `4x5`); others render with `FORMAT=…` from the same timeline.
    - Put in the real brand:
@@ -190,12 +198,18 @@ you resume after a context reset.
    - Write `timeline.js`: `T` cues, the `SCENES` windows, and `INTENDED` (planned
      instant changes). A supplied track: its BPM and first downbeat from `beats.py`.
    - Delete the `demo-*.js` scenes once the first real scene renders.
-2. **Scene by scene.** Build it, then run `node render.mjs review --scene <id>`. That
+2. **Scene by scene.** Build it, with `data-read` on every text the viewer must read
+   (`references/engine.md` § Pitfalls). Then run `node render.mjs review --scene <id>`. That
    writes a sheet of the scene, filmstrips across its cuts, phone-size sheets (what a
-   viewer reads on a phone), and a lint of text cut off by the frame and of frames that
-   change with seek order (state left behind, which breaks parallel renders). Read the
-   images against the storyboard and `references/quality-loop.md`'s rubric. Fix and repeat until the scene is clean, then
-   move on. The engine rules and pitfalls are in `references/engine.md`. **Read its
+   viewer reads on a phone), and `lint.md`, with three lints:
+   - text cut off by the frame;
+   - frames that change with seek order (state left behind, which breaks parallel renders);
+   - **reading time**: every `data-read` text measured against 0.4 s per word + 0.5 s, and
+     one thing to read at a time.
+
+   Clear the reading lint first: it is the defect reviewers used to spend most rounds on.
+   Then read the images against the storyboard and `references/quality-loop.md`'s rubric.
+   Fix and repeat until the scene is clean, then move on. The engine rules and pitfalls are in `references/engine.md`. **Read its
    pitfalls section before the first scene.**
 3. **Whole-film review round.** Run `node render.mjs review`. Then have a **fresh
    subagent** review the pack against the storyboard and the rubric, using the prompt in
@@ -260,13 +274,17 @@ preferences to the profile, not one-off fixes.
   Pick few, and pick fresh.
 - **Hook in the first 2–3 s.** A tension, a question or a striking image. A logo alone
   is not a hook.
+- **Frame 0 is the thumbnail.** Chat apps, X and Threads show it before playback. Open on
+  a finished image (the hook's key frame), never on black or an empty background. qa.py
+  fails both.
 - **Build the film around the magic moment.** Give it the drop in the music, the
   longest shot and the clearest framing.
 - **Outcomes over features.** One idea per scene.
 - **Vary camera distance and device.** Use transformations more than cuts. Show the real
   UI wide at least once, for credibility.
-- **Keep text readable.** Allow about 0.4 s per word plus 0.5 s, one thing to read at a
-  time, and copy in the product's own words. No slogans.
+- **Keep text readable** (the review's reading lint measures it). Allow about 0.4 s per
+  word plus 0.5 s, one thing to read at a time, and copy in the product's own words. No
+  slogans.
 - **Rhythm.** Shots of 3–5 s, one faster burst, and a breath in the music before each
   new section. Something new on screen every 2–4 s.
 - **Not the generic AI video.** These read as made-by-default, so don't ship them unless

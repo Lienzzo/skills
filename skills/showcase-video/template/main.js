@@ -27,7 +27,9 @@ function seek(t) {
   $('#bgGlow').style.transform = `translate3d(${Math.sin(t * 0.21) * 60}px,${Math.cos(t * 0.17) * 40}px,0) scale(${1 + 0.06 * Math.sin(t * 0.3)})`
   for (const s of MODULES) s.at(t)
   drawGrain(gctx, tiles, t)
-  $('#fade').style.opacity = Math.max(1 - P(t, 0, 0.4, E.lin), P(t, T.fadeOut[0], T.fadeOut[1], E.inOutSine))
+  // No fade-in from black: frame 0 is the thumbnail chat apps, X and Threads show, so it must be
+  // a finished image. Fade out at the end only (qa.py checks the first frames).
+  $('#fade').style.opacity = P(t, T.fadeOut[0], T.fadeOut[1], E.inOutSine)
 }
 
 // A duplicate id makes a later scene style an earlier scene's element — fail loudly.
@@ -44,13 +46,19 @@ window.__ready = (async () => {
   tiles = grainTiles(gctx)
   await document.fonts.ready
   await Promise.all([...document.fonts].map((f) => f.load?.()))
-  await Promise.all([...document.images].map((im) => (im.complete ? 0 : new Promise((r) => (im.onload = im.onerror = r)))))
+  // A missing or broken image aborts the render (render.mjs reports it) instead of shipping a hole.
+  const broken = (im) => new Error(`image failed to load: ${im.getAttribute('src')}`)
+  await Promise.all([...document.images].map((im) => (im.complete ? (im.naturalWidth || /\.svg($|\?)/.test(im.src) ? 0 : Promise.reject(broken(im))) : new Promise((ok, fail) => ((im.onload = ok), (im.onerror = () => fail(broken(im))))))))
+  await Promise.all([...document.images].map((im) => im.decode?.().catch(() => {})))
   for (const s of MODULES) await s.measure?.()
   lintIds()
   seek(0)
   return true
 })()
 window.__seek = seek
+// How much of the stage the global covers hide right now (0 clear … 1 hidden): the reading lint
+// in render.mjs multiplies text opacity by 1 − this. Add any full-frame cover you introduce.
+window.__veil = () => Number($('#fade').style.opacity || 0)
 window.__duration = DURATION
 
 const params = new URLSearchParams(location.search)

@@ -47,8 +47,10 @@ uv run <skill>/scripts/beats.py track.wav > assets/beats.json   # a supplied tra
 
 ## Deliverables
 
-finalize.sh masters the soundtrack to −14 LUFS integrated with ≤ −1 dBTP (linear gain
-only), re-tags the colour as BT.709, and writes three files:
+finalize.sh masters the soundtrack to −14 LUFS integrated with ≤ −2 dBTP. It uses linear gain,
+plus an oversampled limiter only when the peaks block the target, and it stops with an error
+if the mix can't reach spec (see `audio.md` § Mix checks). It also re-tags the colour as BT.709
+and writes three files:
 
 | File | For | Typical size |
 |---|---|---|

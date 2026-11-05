@@ -8,7 +8,7 @@ let root, logo, words
 
 export function build() {
   root = $('#s1')
-  root.innerHTML = `<div class="s1-mark"></div><h1 class="s1-word">${linesHTML([['Product']])}</h1>`
+  root.innerHTML = `<div class="s1-mark"></div><h1 class="s1-word" data-read>${linesHTML([['Product']])}</h1>`
   logo = makeLogo($('.s1-mark', root))
   words = $$('.wd', root)
 }

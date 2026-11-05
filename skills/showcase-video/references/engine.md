@@ -223,3 +223,20 @@ pops open) go in `INTENDED`, so QA doesn't flag them as jumps.
   back to `magick -annotate` or `drawtext` for anything the reviewer must read.
 - **Heavy DOM.** Hide scenes outside their window with `show()`. Big offscreen images
   still cost memory, so size assets to their display size × 2.
+- **Top-level `await` in a scene module.** It delays `main.js`, so `window.__ready` didn't
+  exist yet when the renderer started. The first frames of every worker came out black (a
+  79 s film had to be re-rendered). `render.mjs` now waits for `__ready` to exist and to
+  resolve. Still, load data in `measure()` (it is awaited), never at the top of a module.
+- **Missing images.** A 404 used to count as "loaded" and rendered a hole. Now `__ready`
+  rejects and the render stops with the file's name.
+- **Fade from black at the start.** Frame 0 is the thumbnail in chat apps, X and Threads.
+  The template no longer fades in, and `qa.py` fails a black or empty first frame. Open on a
+  finished image (the hook's key frame).
+- **Text to read: `data-read`.** Put `data-read` on every element whose text the viewer must
+  read (headline, caption, the key line of a UI). Use `data-read="label"` to name it in the lint.
+  Put `data-read="0"` on containers whose text isn't meant to be read (a rebuilt UI's incidental
+  labels, a streamed answer shown as motion): everything inside is skipped. `render.mjs review`
+  measures each declared text from the DOM. A scene with big text and nothing declared is
+  NOT CHECKED, never clean. Full-frame covers that aren't ancestors of the text (the `#fade`,
+  a flash) must be reported by `window.__veil()` in `main.js`, or the lint thinks text under
+  them is readable.

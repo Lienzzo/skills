@@ -20,8 +20,10 @@ export function build() {
       <div class="win">
         <div class="win-bar"><i></i><i></i><i></i></div>
         <div class="s2-thread">
-          <div class="s2-q"></div>
-          <div class="s2-a"><p>${streamHTML(ANSWER)}</p></div>
+          <div class="s2-q" data-read></div>
+          <!-- data-read="0": the streamed answer is shown as motion, not as text to read in full (17 words would
+               need 7.3 s). In a real film, text the viewer must read is declared and held; or pull out its key words. -->
+          <div class="s2-a" data-read="0"><p>${streamHTML(ANSWER)}</p></div>
         </div>
         <div class="s2-composer"><span class="s2-input" data-ph="Ask anything…"></span><div class="s2-send">${ic('arrow-up')}</div></div>
       </div>

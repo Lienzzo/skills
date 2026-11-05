@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Soundtrack → mastered WAV (−14 LUFS integrated, ≤ −1.1 dBTP, by linear gain: no
-# dynamic squashing), then the deliverables into $DEST:
+# Soundtrack → mastered WAV (−14 LUFS integrated, true peak ≤ −2 dBTP so the AAC encode,
+# which lifts peaks by up to ~1 dB, still stays under qa.py's −1 dBTP), then the deliverables into $DEST:
 #   <name>.mp4 (master, crf 17) · <name>-web.mp4 (crf 22) · <name>-share.mp4 (720p, ≤ SHARE_MB, for chat apps)
 # Usage: SRC=out/video.mkv NAME=product-showcase-v2 DEST=../v2 ./finalize.sh
 # Takes minutes (three slow encodes): run it in the background.
@@ -17,11 +17,40 @@ done
 todo() { [ -n "${FORCE:-}" ] || [ ! -e "$1" ] || { echo "$1 already done"; return 1; }; }
 
 bun audio.ts >/dev/null
-M=$(ffmpeg -hide_banner -nostats -i out/audio_raw.wav -af ebur128=peak=true:framelog=quiet -f null - 2>&1)
-I=$(echo "$M" | grep -m1 " I:" | awk '{print $2}')
-TP=$(echo "$M" | grep -A1 "True peak" | grep Peak | awk '{print $2}')
-G=$(python3 -c "print(round(min(-14-($I), -1.1-($TP)),2))")
-ffmpeg -hide_banner -loglevel error -y -i out/audio_raw.wav -af "volume=${G}dB" -c:a pcm_s24le out/audio.wav
+# Mastering. Linear gain when the peaks allow it (keeps the intro-to-drop contrast). When they
+# don't — hits far above the bed, the usual case with synthesized SFX — linear gain alone stops
+# short of −14 LUFS (a past film came out at −17.5). Then a look-ahead limiter at 4× oversampling
+# (so it limits true peaks, not just samples) catches only those peaks, with its delay
+# compensated (latency=1: sound stays on its frame), and the gain is corrected until −14 ±0.3.
+measure() {
+  local M; M=$(ffmpeg -hide_banner -nostats -i "$1" -af ebur128=peak=true:framelog=quiet -f null - 2>&1)
+  I=$(echo "$M" | grep -m1 " I:" | awk '{print $2}')
+  TP=$(echo "$M" | grep -A1 "True peak" | grep Peak | awk '{print $2}')
+}
+CEIL=-2.0
+measure out/audio_raw.wav
+G=$(python3 -c "print(round(-14-($I),2))")
+if python3 -c "import sys; sys.exit(0 if ($TP)+($G) <= $CEIL else 1)"; then
+  ffmpeg -hide_banner -loglevel error -y -i out/audio_raw.wav -af "volume=${G}dB" -c:a pcm_s24le out/audio.wav
+  measure out/audio.wav
+  echo "master: linear gain ${G} dB → ${I} LUFS, ${TP} dBTP"
+else
+  TP0=$TP
+  LIM=$(python3 -c "print(round(10**(($CEIL-0.4)/20),4))")
+  for k in 1 2 3 4; do
+    ffmpeg -hide_banner -loglevel error -y -i out/audio_raw.wav \
+      -af "volume=${G}dB,aresample=192000,alimiter=limit=${LIM}:attack=2:release=60:level=0:latency=1,aresample=48000" \
+      -c:a pcm_s24le out/audio.wav
+    measure out/audio.wav
+    python3 -c "import sys; sys.exit(0 if abs(-14-($I)) <= 0.3 else 1)" && break
+    G=$(python3 -c "print(round(($G)+(-14-($I)),2))")
+  done
+  GR=$(python3 -c "print(round(($TP0)+($G)-($TP),1))")
+  echo "master: gain ${G} dB + limiter (−${GR} dB on the loudest peaks) → ${I} LUFS, ${TP} dBTP"
+  python3 -c "import sys; sys.exit(0 if ($GR) <= 6 else 1)" || echo "warning: the limiter takes ${GR} dB off the loudest hits, so they lose their punch. Lower those SFX in audio.ts (REPORT=1 shows which) and rerun."
+fi
+python3 -c "import sys; sys.exit(0 if abs(-14-($I)) <= 0.5 and ($TP) <= -1.5 else 1)" \
+  || { echo "master out of spec (${I} LUFS, ${TP} dBTP): the mix is too spiky — lower the loudest SFX in audio.ts (REPORT=1)"; exit 1; }
 
 # Chunks were converted RGB→YUV with swscale's default (BT.601): re-matrix to BT.709 and tag it,
 # otherwise colours shift slightly in browsers/players.

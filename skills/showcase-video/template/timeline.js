@@ -5,7 +5,7 @@
 // (render.mjs warns about duplicates on every run).
 export const BPM = 120
 export const FPS = 60
-export const DURATION = 12
+export const DURATION = 14
 
 // One timeline, several formats. Set DEFAULT_FORMAT to the brief's main one; render the
 // others with FORMAT=9x16 (env: render.mjs, render-segs.sh, qa.py, audio.ts) — the page
@@ -31,10 +31,10 @@ export const T = {
   answer: [6.8, 8.4],
   push: [7.0, 8.8], // camera pushes toward the answer
   s2Out: [9.55, 10.0],
-  // S3 · end card (bar 5)
+  // S3 · end card (bars 5–6): held long enough to read (render.mjs review measures it)
   end: 10.0,
   endTag: 10.55,
-  fadeOut: [11.2, 12.0],
+  fadeOut: [13.6, 14.0],
 }
 
 // Scene windows [id, from, to, opts?]. Boundaries are the planned cuts: `render.mjs review`

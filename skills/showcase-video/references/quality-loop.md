@@ -43,8 +43,17 @@ The review pack in `out/review/<tag>/` contains:
 - `scene-<id>.png`: the whole scene at ≤ 0.25 s steps;
 - `cut-<t>.png`: ±0.3 s around each planned cut at 0.05 s;
 - `phone-<n>.png`: one frame per bar at 390 px wide, the size a phone shows it;
-- `lint.md`: text partly outside the frame, frames that change with seek order, and page
-  errors.
+- `lint.md`, with four checks:
+  - text partly outside the frame;
+  - frames that change with seek order;
+  - page errors;
+  - **the reading lint.** Every `data-read` text is measured against 0.4 s per word + 0.5 s,
+    a second text arriving while the first still needs its time is flagged, and so is its size
+    on a 390 px phone. Big text nothing declared is listed, and a scene with none declared is
+    NOT CHECKED.
+
+  Clear the reading lint yourself before a reviewer sees the pack. In a past film, most of 6
+  review rounds went on reading time a machine can measure.
 
 Add full-size `preview` stills for detail-heavy moments: hovers, modals, badges, the end
 card.
@@ -60,11 +69,17 @@ notice) or **minor** (polish).
 | Framing | Important text or UI cut by the frame or its container. Empty stage visible outside the app. | Crowded or unbalanced composition. Key element too small to read at 1080p. | Uneven margins. |
 | Fidelity | Wrong logo, brand name or theme. A feature or element the product doesn't have. | UI details off (spacing, radii, icon set, strings not the product's). | Tiny token mismatch. |
 | Truth | A false or unverified claim, number or law on screen. | A misleading example. | |
-| Readability | Text on screen for less than ~0.4 s per word + 0.5 s. Two things to read at once. Key text unreadable in the phone sheets when the film will be watched on phones. | Low contrast. Text over busy motion. Secondary text unreadable at phone size. | Awkward line breaks. |
+| Readability | Text on screen for less than ~0.4 s per word + 0.5 s. Two things to read at once. Key text unreadable in the phone sheets when the film will be watched on phones. (The reading lint measures the first two: the reviewer checks what it can't, such as text baked into captures.) | Low contrast. Text over busy motion. Secondary text unreadable at phone size. | Awkward line breaks. |
 | Story | A scene that doesn't match the approved storyboard. The magic moment missing or buried. | A scene with no clear point. Pacing monotony (same framing more than ~6 s, same layout repeated). | |
 | Craft | Rendering artifacts (stray shapes, broken glyphs, missing fonts). A frame that changes with seek order (lint). | Off-centre badge text, misaligned icons, jittery motion, blurry text in a camera push. | |
 | Generic look | | A centered title on a gradient, everything fading in, labels in corners or frame borders, glow on UI chrome, generic particle bursts, a logo as the only hook. A beat with nothing new for more than ~4 s. | |
 | Sameness | Reads like a past video with another logo (compare with the profile). | A signature device reused from a past video. | |
+
+**Taste is not a defect.** A preference that breaks no row of this rubric is at most *minor*.
+Something the storyboard's **Locked decisions** or a WONTFIX in LOOP.md already settled is
+not reported again, unless it is now unreadable, false, or a regression (it broke since). In
+a past film, fresh reviewers reversed each other's taste calls for 10 rounds (which side a
+card opens on, when it moves away) until the decisions were locked.
 
 Audio is checked by numbers, not by ear. Check the stem report per scene: SFX audible in
 UI scenes, no stem clipping. qa.py checks loudness and silences.
@@ -84,6 +99,10 @@ Storyboard (approved by the client):
 <paste the storyboard table>
 
 Product facts (what is real): <theme, brand name, key UI, what features exist>
+
+Locked decisions (settled with the client or in earlier rounds; do NOT reopen them unless the
+result is unreadable, false, or a regression):
+<paste STORYBOARD.md § Locked decisions and LOOP.md's WONTFIX lines, each with its reason>
 Past videos of this brand/user (must not be repeated): <from the profile, or "none">
 
 Review pack — read every image:
@@ -95,7 +114,8 @@ be watched on phones>: judge text size there, not in the full-size tiles.
 Use this rubric: <paste section 2 of quality-loop.md>
 
 Report ONLY defects, most severe first, one per line:
-<severity> · <time or range> · <area> · <what is wrong> · <suggested fix>
+<severity> · <time or range> · <area> · WHERE <element> · PROBLEM <what is wrong> · CHANGE <the fix> · KEEP <what must not change>
+A taste preference that breaks no rubric row is at most minor.
 Then one line: "Verdict: ship" if there are no blockers or majors, otherwise "Verdict: fix".
 Do not praise. Do not restate the storyboard. If a tile is ambiguous, say what you'd need
 to see (e.g. "full-size preview at 18.4").
@@ -112,8 +132,10 @@ Keep it in `src/`, newest entry last:
 Reviewer: 1 blocker, 3 majors, 5 minors
 - FIXED blocker 10.02 s continuity: input box drops 20 px when the thread appears → thread pre-laid-out at rest
 - FIXED major 18.4 s craft: citation digits off-centre → line-height 1 on the badge
-- FIXED major 44.9 s readability: caption on screen 0.8 s for 9 words → held to 3.2 s, cue shifted
+- FIXED major 44.9 s readability: caption on screen 0.8 s for 9 words → held to 4.2 s (needs 4.1), cue shifted
 - WONTFIX minor 30.1 s: margin 4 px uneven (hidden by the camera push)
+- LOCKED 24–26 s: the two phones are a passing shot, not a hold (rounds 5 and 7 asked for
+  opposite things) → added to STORYBOARD.md § Locked decisions
 Next: re-review scenes cloud + hero; then render.
 ```
 
@@ -121,6 +143,8 @@ Next: re-review scenes cloud + hero; then render.
 
 **The video is ready to deliver when:**
 - the last whole-film review says "Verdict: ship" (no blockers or majors);
+- the reading lint is clean (or each entry is explained in LOOP.md), and it says it CHECKED
+  every scene;
 - `lint.md` has no unexplained entries (a seek-order entry is never "explained": fix it);
 - qa.py on the delivered mp4 exits 0;
 - every fact on screen has a noted source.

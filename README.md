@@ -41,6 +41,20 @@ Auditoría UX/UI de nivel senior y rediseño «top tier» de cualquier software,
 
 Instalación: `npx skills add Lienzzo/skills --skill ux-top-tier`
 
+## showcase-video
+
+Product films in code: launch, promo, feature or explainer videos (16:9, 9:16, 1:1, 4:5), with frame-exact HTML scenes rendered by headless Chromium and ffmpeg, plus an original soundtrack and SFX synthesized from the same timeline. It runs a short multiple-choice brief, researches reference films and the real product (tokens, strings, logo, captures of the running app), proposes three directions, and asks for one approval. After that it produces on its own in a build → review → fix loop. The loop has an independent reviewer and machine checks: reading time of every on-screen text, seek-order state, off-frame text, thumbnail frame, loudness and true peak, and unplanned jumps in the delivered file.
+
+```bash
+npx skills add Lienzzo/skills --skill showcase-video
+```
+
+Originally written by [Samuel Fernández Fort](https://github.com/SamuelFerfort/showcase-video-skill) (MIT, kept in `skills/showcase-video/LICENSE`); extended by Lienzzo.
+
+**Requirements.** Node ≥ 20 and bun, ffmpeg, ImageMagick 7, Playwright with `chromium-headless-shell`, uv, yt-dlp, poppler. `scripts/new_project.sh` reports anything missing.
+
+**En español.** Vídeos de producto hechos en código, con música propia sintetizada al fotograma, un revisor independiente y controles automáticos: tiempo de lectura, miniatura, sonoridad y saltos.
+
 ## License
 
 [MIT](LICENSE)

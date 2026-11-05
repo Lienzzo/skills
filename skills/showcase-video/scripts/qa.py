@@ -5,6 +5,7 @@ review, run on the actual file (the join, the encode and the audio mux only exis
     qa.py <video.mp4|mkv> <src-dir>
 
 Blockers (exit 1 until resolved):
+  ✗ the first frames black or a flat field (frame 0 is the thumbnail chat apps and X show)
   ✗ frame count ≠ DURATION × FPS (a bad segment join doubles or truncates), wrong resolution,
     colour not tagged bt709 (mp4), no audio (mp4), loudness outside −14 ±1 LUFS, true peak > −1 dBTP
   ✗ moments to review: discontinuities (a frame that changes far more than its neighbours:
@@ -45,6 +46,22 @@ want = round(tl['D'] * tl['F'])
 n = int(v['nb_read_packets'])
 (ok if n == want else bad)(f'frames {n} (timeline {want}) · {dur:.2f} s')
 (ok if (v['width'], v['height']) == (tl['W'], tl['H']) else bad)(f"resolution {v['width']}×{v['height']}")
+
+# ── the first frames are the thumbnail ─────────────────────────────────────────
+# Chat apps, X and Threads show frame 0 until the video plays: it must be a finished image,
+# not black (a fade-in) or an empty background. Saved as frame0.png: judge its composition too.
+log = run(['ffmpeg', '-hide_banner', '-i', video, '-an', '-vf', "select='lt(n,5)',signalstats,metadata=print", '-frames:v', '5', '-f', 'null', '-']).stderr
+lo = [float(x) for x in re.findall(r'lavfi.signalstats.YLOW=([\d.]+)', log)]
+hi = [float(x) for x in re.findall(r'lavfi.signalstats.YHIGH=([\d.]+)', log)]
+run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', video, '-frames:v', '1', '-update', '1', os.path.join(out, 'frame0.png')])
+if not hi:
+    note('first frames: could not measure (signalstats)')
+elif max(hi) < 40:
+    bad('the first frames are black (a fade-in from black?): frame 0 is the thumbnail, start on a finished image')
+elif min(h - l for h, l in zip(hi, lo)) < 10:
+    bad('the first frames are a flat field (empty background): frame 0 is the thumbnail, start on a finished image')
+else:
+    ok(f'first frames have content — judge the thumbnail: {os.path.join(out, "frame0.png")}')
 if video.endswith('.mp4'):
     (ok if v.get('color_space') == 'bt709' else bad)(f"colour {v.get('color_space', 'untagged')}")
 

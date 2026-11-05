@@ -69,9 +69,15 @@ Keep SFX panned subtly towards where the action is on screen (−0.4…0.4).
   - **In UI scenes,** SFX should sit within about 6–10 dB of the total. More than
     ~12 dB below and the clicks disappear under the music.
   - **Bass at −120** in a section means it's intentionally out.
-- The master is normalized by finalize.sh to −14 LUFS integrated with true peak
-  ≤ −1.1 dBTP, by linear gain only. Loudnorm's dynamic mode would flatten the
-  intro-to-drop contrast.
+- **The master.** finalize.sh brings the mix to −14 LUFS integrated with true peak ≤ −2 dBTP. The
+  AAC encode lifts peaks by up to ~1 dB, and qa.py checks ≤ −1 dBTP on the mp4. It uses linear
+  gain when the peaks allow it. When they don't (hits far above the bed, the usual case with
+  synthesized SFX), it adds a 4×-oversampled look-ahead limiter. The limiter only catches those
+  peaks, and its delay is compensated, so every sound stays on its frame.
+  - It prints how many dB the limiter took off. Above 6 dB the hits lose their punch: lower the
+    loudest SFX instead of trusting the limiter.
+  - Never use loudnorm's dynamic mode: it flattens the intro-to-drop contrast.
+  - A past film came out at −17.5 LUFS with gain only, because its hits pinned the peak.
 - For a quick visual sanity check, draw a spectrogram:
 
   ```bash
