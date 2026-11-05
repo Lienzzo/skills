@@ -561,7 +561,7 @@ export function mixdown({ kicks, sections = [], gains = {}, voice = [], voiceOve
   }
   let peak = 0
   for (let i = 0; i < LEN; i++) peak = Math.max(peak, Math.abs(mL[i]), Math.abs(mR[i]))
-  const pre = db(-3) / peak
+  const pre = peak > 1e-9 ? db(-3) / peak : 1 // a film with no bed at all (voice and UI sound only)
   const fade = (t: number) => {
     const fi = Math.min(1, t / 0.3)
     const fo = t < T.fadeOut[0] + 0.2 ? 1 : Math.max(0, 1 - (t - T.fadeOut[0] - 0.2) / (T.fadeOut[1] - T.fadeOut[0] - 0.2))
@@ -596,7 +596,10 @@ export function mixdown({ kicks, sections = [], gains = {}, voice = [], voiceOve
       B.voice.R[i] *= gr
     }
   }
-  const voicedOf = (l: VoiceLine): [number, number][] => (vg ? vg.spans.filter(([a, b]) => b > l.t0 - 0.01 && a < l.t1 + 0.01) : [])
+  // A take's voiced spans, clipped to the take: spans merged across a short breath (< 0.4 s,
+  // for the duck) must not measure the neighbouring take too.
+  const voicedOf = (l: VoiceLine): [number, number][] =>
+    vg ? vg.spans.filter(([a, b]) => b > l.t0 - 0.01 && a < l.t1 + 0.01).map(([a, b]): [number, number] => [Math.max(a, l.t0 - 0.01), Math.min(b, l.t1 + 0.01)]) : []
   const perLine: { id: string; v: number; b: number }[] = []
   if (voice.length) {
     for (const l of voice) {
@@ -604,10 +607,16 @@ export function mixdown({ kicks, sections = [], gains = {}, voice = [], voiceOve
       if (!r.length) throw new Error(`voice: no voiced span found for take ${l.id} (${l.t0}–${l.t1} s): its word times are not on the film clock`)
       perLine.push({ id: l.id, v: pow((i) => [B.voice.L[i], B.voice.R[i]], r), b: pow((i) => [mL[i], mR[i]], r) })
     }
+    // Over silence (no bed: b < −60 dBFS) "10 dB over the bed" means nothing: such a take keeps
+    // the median gain of the others, so it sits at the same level as the rest of the narration.
+    const hasBed = perLine.map((x) => x.b > -60)
     const want = perLine.map((x) => voiceOverBed - (x.v - x.b))
-    const med = [...want].sort((a, b) => a - b)[Math.floor(want.length / 2)]
+    const withBed = want.filter((_, k) => hasBed[k]).sort((a, b) => a - b)
+    const med = withBed.length ? withBed[Math.floor(withBed.length / 2)] : -6
     voice.forEach((l, k) => {
-      const g = Math.min(med + 4, want[k]) // lowering a take is always free
+      // never more than 4 dB above the median take (it would only feed the limiter), never more
+      // than 8 dB below it (the narration stays one voice)
+      const g = hasBed[k] ? Math.max(med - 8, Math.min(med + 4, want[k])) : med
       takeGain[l.id] = g
       const next = voice[k + 1]
       for (let i = Math.max(0, S(k ? l.at : 0)); i < Math.min(LEN, next ? S(next.at) : LEN); i++) vGainAt[i] = db(g)
@@ -678,6 +687,10 @@ export function mixdown({ kicks, sections = [], gains = {}, voice = [], voiceOve
       for (const x of perLine) {
         const g = takeGain[x.id]
         const d = x.v + g - x.b // measured before the peak limiter, which only trims transients
+        if (x.b <= -60) {
+          console.log(`  ${x.id.padEnd(8)}   no bed under it: kept at the narration's level (take ${g >= 0 ? '+' : ''}${g.toFixed(1)} dB)`)
+          continue
+        }
         console.log(`  ${x.id.padEnd(8)} ${d.toFixed(1).padStart(5)} dB  (take ${g >= 0 ? '+' : ''}${g.toFixed(1)} dB)${d < 8 ? '  ← buried even at +4 dB over the other takes: a hit or busy SFX under it (move them into a breath)' : d > 14 ? '  ← the bed vanishes here' : ''}`)
       }
     }

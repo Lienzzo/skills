@@ -261,25 +261,30 @@ def gen_say(line, cfg, out):
     return None  # words come from whisper
 
 
-def gen_file(line, src, out):
+def recording(src, lid):
+    """The recording used for a take (--provider file): the first of these that exists."""
     for ext in ('wav', 'm4a', 'mp3', 'aiff', 'flac'):
-        p = os.path.join(src, 'vo', f"{line['id']}.{ext}")
+        p = os.path.join(src, 'vo', f'{lid}.{ext}')
         if os.path.exists(p):
-            to_take(p, out)
-            return None
-    die(f"no recording for {line['id']}: put it at {src}/vo/{line['id']}.wav (or .m4a/.mp3)")
+            return p
+    return None
+
+
+def gen_file(line, src, out):
+    p = recording(src, line['id']) or die(f"no recording for {line['id']}: put it at {src}/vo/{line['id']}.wav (or .m4a/.mp3)")
+    to_take(p, out)
+    return None
 
 
 # ── build ─────────────────────────────────────────────────────────────────────
 def take_hash(provider, line, cfg):
-    keep = {k: v for k, v in cfg.items() if k in (('say_voice', 'rate') if provider == 'say' else ('voice', 'model', 'format', 'stability', 'similarity', 'style', 'speed') if provider == 'eleven' else ())}
+    keep = {k: v for k, v in cfg.items() if k in (('say_voice', 'rate', 'lang') if provider == 'say' else ('voice', 'model', 'format', 'stability', 'similarity', 'style', 'speed') if provider == 'eleven' else ('lang',))}
     if provider == 'eleven' and 'voice' not in keep:
         keep['voice'] = os.environ.get('ELEVENLABS_VOICE_ID', '')
-    if provider == 'file':
-        for ext in ('wav', 'm4a', 'mp3', 'aiff', 'flac'):
-            p = os.path.join(SRC, 'vo', f"{line['id']}.{ext}")
-            if os.path.exists(p):
-                keep['mtime'] = os.path.getmtime(p)
+    if provider == 'file':  # the recording actually used, by content (a re-export with the same date counts)
+        p = recording(SRC, line['id'])
+        if p:
+            keep['rec'] = [os.path.basename(p), hashlib.sha256(open(p, 'rb').read()).hexdigest()]
     return hashlib.sha256(json.dumps([provider, line['text'], keep], sort_keys=True).encode()).hexdigest()[:16]
 
 
