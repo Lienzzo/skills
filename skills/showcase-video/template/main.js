@@ -47,9 +47,13 @@ window.__ready = (async () => {
   await document.fonts.ready
   await Promise.all([...document.fonts].map((f) => f.load?.()))
   // A missing or broken image aborts the render (render.mjs reports it) instead of shipping a hole.
+  // decode() also catches a file served with 200 that isn't a valid image (a broken SVG).
   const broken = (im) => new Error(`image failed to load: ${im.getAttribute('src')}`)
-  await Promise.all([...document.images].map((im) => (im.complete ? (im.naturalWidth || /\.svg($|\?)/.test(im.src) ? 0 : Promise.reject(broken(im))) : new Promise((ok, fail) => ((im.onload = ok), (im.onerror = () => fail(broken(im))))))))
-  await Promise.all([...document.images].map((im) => im.decode?.().catch(() => {})))
+  await Promise.all([...document.images].map(async (im) => {
+    if (!im.complete) await new Promise((ok, fail) => ((im.onload = ok), (im.onerror = () => fail(broken(im)))))
+    await im.decode().catch(() => { throw broken(im) })
+    if (!im.naturalWidth && !/\.svg($|\?)/.test(im.src)) throw broken(im)
+  }))
   for (const s of MODULES) await s.measure?.()
   lintIds()
   seek(0)

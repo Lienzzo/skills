@@ -81,7 +81,16 @@ let pageErrors = 0
 // of every worker then came out black. Wait for __ready to exist, then for it to resolve; a
 // rejected __ready (a font or image that failed) aborts instead of rendering a broken frame.
 async function pageReady(page) {
-  await page.waitForFunction(() => window.__ready !== undefined && typeof window.__seek === 'function', null, { timeout: 60000 })
+  // A script error before __ready exists (a syntax error in a scene) would otherwise wait out
+  // the timeout. openPage records page errors from before goto() returns (page.__err).
+  let iv
+  const failed = new Promise((_, fail) => (iv = setInterval(() => page.__err && fail(new Error(`page failed before it was ready: ${page.__err}`)), 100)))
+  try {
+    await Promise.race([failed, page.waitForFunction(() => window.__ready !== undefined && typeof window.__seek === 'function', null, { timeout: 60000 })])
+  } finally {
+    clearInterval(iv)
+    failed.catch(() => {})
+  }
   const ok = await page.evaluate(() => window.__ready)
   if (ok !== true) throw new Error(`window.__ready resolved to ${JSON.stringify(ok)}, expected true`)
 }
@@ -90,7 +99,7 @@ async function openPage(browser, url, dsf) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: dsf })
   const page = await ctx.newPage()
   page.on('console', (m) => m.type() === 'error' && (pageErrors++, console.error('[page]', m.text())))
-  page.on('pageerror', (e) => (pageErrors++, console.error('[pageerror]', e.message)))
+  page.on('pageerror', (e) => (pageErrors++, (page.__err ??= e.message), console.error('[pageerror]', e.message)))
   await page.goto(url)
   await pageReady(page)
   const cdp = await ctx.newCDPSession(page)
@@ -127,6 +136,7 @@ async function phoneSheets(shot, ts, dir) {
 // shot playing forward from a fresh page vs reached backwards that differs means at(t) leaves
 // state behind (a style set in one branch and never reset).
 async function orderLint(page, shot, ts) {
+  page.__err = undefined
   await page.reload()
   await pageReady(page)
   const fwd = new Map()
@@ -226,6 +236,7 @@ async function readProbe(page, t) {
       const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
       for (let n = walk.nextNode(); n; n = walk.nextNode()) {
         const p = n.parentElement
+        if (p.closest('[data-read="0"]')) continue // excluded inside a declared text
         if (!n.textContent.trim() || !shown(p) || opacityOf(p, el) < 0.5) continue
         words.push(n.textContent)
         const rg = document.createRange()
@@ -252,12 +263,22 @@ async function readProbe(page, t) {
   }, { W, H })
 }
 
-// Same read if the text keeps its opening (it grows, a citation badge lands mid-sentence);
-// a different opening means the element now says something else.
+// Same read only if the new text extends the old one: every old word still there, in order
+// (words may be inserted, e.g. a citation badge landing mid-sentence), and the last old word
+// may still be typing; or it is the same text with a number still counting. Anything else is a
+// new message, and the old one is judged on its own.
 function sameRead(a, b) {
-  let i = 0
-  while (i < a.length && i < b.length && a[i] === b[i]) i++
-  return i >= Math.min(12, Math.floor(a.length / 2), b.length)
+  // A number counting up or down is one read: readable once it settles (the clock restarts).
+  if (a.replace(/[\d.,]+/g, '#') === b.replace(/[\d.,]+/g, '#')) return true
+  const toks = (s) => s.split(' ').map((w) => w.replace(/[^\p{L}\p{N}]/gu, '')).filter(Boolean) // punctuation moves as badges land
+  const A = toks(a), B = toks(b)
+  let j = 0
+  for (let i = 0; i < A.length; i++) {
+    const last = i === A.length - 1
+    while (j < B.length && !(B[j] === A[i] || (last && B[j].startsWith(A[i])))) j++
+    if (j++ >= B.length) return false
+  }
+  return true
 }
 
 async function readingLint(page, scenes, phoneMin) {
