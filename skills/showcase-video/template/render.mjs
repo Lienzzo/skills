@@ -16,6 +16,7 @@ import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { DURATION, FPS, W, H, SCENES, FORMAT } from './timeline.js'
+import * as TL from './timeline.js' // TL.V: the laid-out narration, in a narrated film
 import { loadPlaywright, chromePath } from './pw.mjs'
 import { montage } from './montage.mjs'
 
@@ -405,6 +406,20 @@ if (mode === 'preview') {
   if (pageErrors) lines.push('', `## ${pageErrors} page error(s) — see the console output`)
   fs.writeFileSync(path.join(dir, 'lint.md'), lines.join('\n') + '\n')
   console.log(lines.join('\n'))
+  // A narrated film: what is SAID when, scene by scene, so the reviewer can check every claim
+  // against what is on screen during its words (and catch on-screen text that repeats it).
+  if (TL.V?.lines?.length) {
+    const nar = [`# Narration (${TL.V.provider} voice) — what is said, when`, '']
+    for (const [sid, a, b] of scenes) {
+      const ls = TL.V.lines.filter((l) => l.t1 > a && l.t0 < b)
+      if (!ls.length) continue
+      nar.push(`## ${sid} · ${a.toFixed(2)}–${b.toFixed(2)} s`, '')
+      for (const l of ls) nar.push(`- ${l.t0.toFixed(2)}–${l.t1.toFixed(2)} s · ${l.id}: "${l.text}"`)
+      nar.push('')
+    }
+    fs.writeFileSync(path.join(dir, 'narration.md'), nar.join('\n'))
+    console.log(`\nnarration.md: ${TL.V.lines.length} take(s) laid out for the reviewer`)
+  }
   console.log(`\n${dir}`)
 } else if (mode === 'render') {
   const name = opt('name', 'video')

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Soundtrack → mastered WAV (−14 LUFS integrated, true peak ≤ −2 dBTP so the AAC encode,
+# Soundtrack → mastered WAV (−14 LUFS integrated, or timeline.js LOUDNESS: −16 for narrated films;
+# true peak ≤ −2 dBTP so the AAC encode,
 # which lifts peaks by up to ~1 dB, still stays under qa.py's −1 dBTP), then the deliverables into $DEST:
 #   <name>.mp4 (master, crf 17) · <name>-web.mp4 (crf 22) · <name>-share.mp4 (720p, ≤ SHARE_MB, for chat apps)
 # Usage: SRC=out/video.mkv NAME=product-showcase-v2 DEST=../v2 ./finalize.sh
@@ -28,8 +29,9 @@ measure() {
   TP=$(echo "$M" | grep -A1 "True peak" | grep Peak | awk '{print $2}')
 }
 CEIL=-2.0
+TGT=$(node -e "import('./timeline.js').then(m => console.log(m.LOUDNESS ?? -14))")
 measure out/audio_raw.wav
-G=$(python3 -c "print(round(-14-($I),2))")
+G=$(python3 -c "print(round(($TGT)-($I),2))")
 if python3 -c "import sys; sys.exit(0 if ($TP)+($G) <= $CEIL else 1)"; then
   ffmpeg -hide_banner -loglevel error -y -i out/audio_raw.wav -af "volume=${G}dB" -c:a pcm_s24le out/audio.wav
   measure out/audio.wav
@@ -42,14 +44,14 @@ else
       -af "volume=${G}dB,aresample=192000,alimiter=limit=${LIM}:attack=2:release=60:level=0:latency=1,aresample=48000" \
       -c:a pcm_s24le out/audio.wav
     measure out/audio.wav
-    python3 -c "import sys; sys.exit(0 if abs(-14-($I)) <= 0.3 else 1)" && break
-    G=$(python3 -c "print(round(($G)+(-14-($I)),2))")
+    python3 -c "import sys; sys.exit(0 if abs(($TGT)-($I)) <= 0.3 else 1)" && break
+    G=$(python3 -c "print(round(($G)+(($TGT)-($I)),2))")
   done
   GR=$(python3 -c "print(round(($TP0)+($G)-($TP),1))")
   echo "master: gain ${G} dB + limiter (−${GR} dB on the loudest peaks) → ${I} LUFS, ${TP} dBTP"
   python3 -c "import sys; sys.exit(0 if ($GR) <= 6 else 1)" || echo "warning: the limiter takes ${GR} dB off the loudest hits, so they lose their punch. Lower those SFX in audio.ts (REPORT=1 shows which) and rerun."
 fi
-python3 -c "import sys; sys.exit(0 if abs(-14-($I)) <= 0.5 and ($TP) <= -1.5 else 1)" \
+python3 -c "import sys; sys.exit(0 if abs(($TGT)-($I)) <= 0.5 and ($TP) <= -1.5 else 1)" \
   || { echo "master out of spec (${I} LUFS, ${TP} dBTP): the mix is too spiky — lower the loudest SFX in audio.ts (REPORT=1)"; exit 1; }
 
 # Chunks were converted RGB→YUV with swscale's default (BT.601): re-matrix to BT.709 and tag it,

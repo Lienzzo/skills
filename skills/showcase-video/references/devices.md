@@ -41,7 +41,10 @@ Rhythm and structure · Endings · Matching devices to products
 - **The real window, wide, once:** credibility that it's a real product.
 
 ## Metaphors for invisible work
-AI retrieval, indexing, extraction and delegation have no UI. Draw them.
+AI retrieval, indexing, extraction and delegation have no UI. Draw them. **Only those:** what
+has a picture is shown as itself. The real contract with the row marked, the real report, a
+click and its result all beat a metaphor. A client once rejected an abstract "rules" panel
+for exactly that reason. Every storyboard row names its mechanism (SKILL.md §3).
 
 - **Particles from the brand's own shapes** (droplets, strokes, dots) dissolve out of
   the query, travel to the sources, and return as the answer.
@@ -112,5 +115,6 @@ Prefer transformations to hard cuts.
 | Generates (UI, text, images) | Wall of outputs, rolling placeholder, morph prompt → result |
 | Data and analytics | Mini-chart grows into a full chart, lens, counter opening |
 | Mobile-first | Device in context, touch taps, native camera or sheets, store badges |
-| Voice | Waveform built from the logo's shape, captions, a silent visual rhythm (no voiceover unless asked) |
+| Voice products | Waveform built from the logo's shape, captions, a silent visual rhythm |
+| Explained to a client (report, audit, demo in a meeting) | Narrated mode (`explainer.md`): the real document or dashboard with the cursor working it, figures landing on the word that says them, one metaphor at most for the invisible part |
 | Workflow or automation | Assembly line, chaptered structure, one continuous camera across steps |

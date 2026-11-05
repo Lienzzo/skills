@@ -71,6 +71,8 @@ notice) or **minor** (polish).
 | Truth | A false or unverified claim, number or law on screen. | A misleading example. | |
 | Readability | Text on screen for less than ~0.4 s per word + 0.5 s. Two things to read at once. Key text unreadable in the phone sheets when the film will be watched on phones. (The reading lint measures the first two: the reviewer checks what it can't, such as text baked into captures.) | Low contrast. Text over busy motion. Secondary text unreadable at phone size. | Awkward line breaks. |
 | Story | A scene that doesn't match the approved storyboard. The magic moment missing or buried. | A scene with no clear point. Pacing monotony (same framing more than ~6 s, same layout repeated). | |
+| Mechanism | | A claim made only in text (or voice) with nothing on screen proving it, where the storyboard has a real artifact. A metaphor where the real thing could be shown. | |
+| Narration (narrated films) | The voice says something the screen contradicts. Scratch voice in a delivery. | On-screen text repeating the sentence being spoken. The mechanism shown well before or after the words that claim it (> ~1 s). A cut mid-word. A scene that reads as a slide being read aloud. | A take buried under the bed (REPORT < 8 dB). |
 | Craft | Rendering artifacts (stray shapes, broken glyphs, missing fonts). A frame that changes with seek order (lint). | Off-centre badge text, misaligned icons, jittery motion, blurry text in a camera push. | |
 | Generic look | | A centered title on a gradient, everything fading in, labels in corners or frame borders, glow on UI chrome, generic particle bursts, a logo as the only hook. A beat with nothing new for more than ~4 s. | |
 | Sameness | Reads like a past video with another logo (compare with the profile). | A signature device reused from a past video. | |
@@ -107,6 +109,9 @@ Past videos of this brand/user (must not be repeated): <from the profile, or "no
 
 Review pack — read every image:
 <list the absolute paths: scene-*.png, cut-*.png, phone-*.png, lint.md, any previews>
+<narrated films: narration.md, what the voice says and when. For each take, look at the
+tiles inside its time range and check that what is on screen then proves what is said,
+and that no on-screen sentence repeats it.>
 Each tile is labelled with its time in seconds. Filmstrips show 0.05 s steps across a cut.
 phone-*.png show frames at the size a phone displays them<, and this film WILL / will NOT
 be watched on phones>: judge text size there, not in the full-size tiles.
@@ -145,6 +150,8 @@ Next: re-review scenes cloud + hero; then render.
 - the last whole-film review says "Verdict: ship" (no blockers or majors);
 - the reading lint is clean (or each entry is explained in LOOP.md), and it says it CHECKED
   every scene;
+- narrated films: the final voice (qa.py blocks the scratch one), and `REPORT=1` gives every
+  take 8–12 dB over the bed;
 - `lint.md` has no unexplained entries (a seek-order entry is never "explained": fix it);
 - qa.py on the delivered mp4 exits 0;
 - every fact on screen has a noted source.

@@ -23,6 +23,7 @@ export const B = {
   music: bus(), // plucks, melody, chops (ducked lightly)
   pad: bus(), // ducked
   sfx: bus(),
+  voice: bus(), // narration (placeVoice): dry, centred, summed after the master so nothing clips or fades it
   verb: bus(), // reverb send
   delay: bus(), // delay send
 }
@@ -85,6 +86,17 @@ export function loadTrack(file: string, from = 0): St {
     R[i] = f[2 * i + 1]
   }
   return { L, R }
+}
+
+// Narration: each take (vo.js via voice.js layVoice) placed where its first word belongs.
+// High-passed at 90 Hz (rumble and plosives); level is set by mixdown (voiceOverBed).
+// Times are absolute (film clock), as voice.js lays them out: `at` is where the file starts.
+export type VoiceLine = { id: string; file: string; at: number; t0: number; t1: number; words: { t0: number; t1: number }[] }
+export function placeVoice(lines: VoiceLine[]) {
+  for (const l of lines) {
+    const x = loadTrack(new URL(l.file, import.meta.url).pathname)
+    placeSt(B.voice, { L: svf(x.L, 90, 0.7, 'hp'), R: svf(x.R, 90, 0.7, 'hp') }, l.at)
+  }
 }
 
 // ── primitives ───────────────────────────────────────────────────────────────
@@ -468,13 +480,59 @@ function freeverb(inp: St, room = 0.86, damp = 0.28) {
   return out
 }
 
+// Ducking under the narration, built from the word times (not from a level follower): it opens
+// 80 ms before the first word of a phrase, holds across pauses shorter than 0.4 s and releases
+// over 300 ms after the last word. Deterministic, like everything else here.
+function voiceGate(lines: VoiceLine[]) {
+  const m = new Float32Array(LEN)
+  const spans: [number, number][] = []
+  for (const l of lines) for (const w of l.words) {
+    const last = spans.at(-1)
+    if (last && w.t0 - last[1] < 0.4) last[1] = Math.max(last[1], w.t1)
+    else spans.push([w.t0, w.t1])
+  }
+  for (const [a, b] of spans) for (let i = Math.max(0, S(a) - 1); i < Math.min(LEN, S(b)); i++) m[i] = 1
+  const att = 1 / (0.08 * SR), rel = 1 / (0.3 * SR)
+  for (let i = 1; i < LEN; i++) m[i] = Math.max(m[i], m[i - 1] - rel)
+  for (let i = LEN - 2; i >= 0; i--) m[i] = Math.max(m[i], m[i + 1] - att)
+  for (let i = 0; i < LEN; i++) m[i] = 0.5 - 0.5 * Math.cos(PI * m[i])
+  return { env: m, spans }
+}
+const under = (env: Float32Array | null, depthDb: number) => {
+  const g = new Float32Array(LEN).fill(1)
+  if (env) for (let i = 0; i < LEN; i++) g[i] = 1 - (1 - db(depthDb)) * env[i]
+  return g
+}
+const mulInto = (a: Float32Array, b: Float32Array) => {
+  for (let i = 0; i < LEN; i++) a[i] *= b[i]
+  return a
+}
+// Power of a stereo signal over [i0, i1) in dBFS: (L² + R²) / 2, not a mono fold-down.
+function pow(f: (i: number) => [number, number], ranges: [number, number][]) {
+  let acc = 0, n = 0
+  for (const [a, b] of ranges)
+    for (let i = Math.max(0, S(a)); i < Math.min(LEN, S(b)); i++) {
+      const [l, r] = f(i)
+      acc += (l * l + r * r) / 2
+      n++
+    }
+  return n ? 10 * Math.log10(acc / n + 1e-12) : -120
+}
+
 type MixOpts = {
   kicks: number[] // every kick time: drives the sidechain duck
   sections?: [string, number, number][] // for the REPORT=1 stem table
   gains?: Partial<Record<'drums' | 'bass' | 'music' | 'pad' | 'sfx' | 'delay' | 'verb', number>>
+  voice?: VoiceLine[] // narration placed with placeVoice: ducks the bed and is levelled over it
+  voiceOverBed?: number // dB of voice over the (ducked) bed while it speaks: 8–12 reads clearly
+  duckDb?: Partial<Record<'bass' | 'pad' | 'music' | 'drums' | 'sfx' | 'fx', number>> // depth under the voice
 }
-export function mixdown({ kicks, sections = [], gains = {} }: MixOpts) {
-  const dBass = duck(kicks, 0.8, 0.1), dPad = duck(kicks, 0.45, 0.12), dMus = duck(kicks, 0.25, 0.1), dFx = duck(kicks, 0.2, 0.12)
+export function mixdown({ kicks, sections = [], gains = {}, voice = [], voiceOverBed = 10, duckDb = {} }: MixOpts) {
+  const vg = voice.length ? voiceGate(voice) : null
+  const VD = { bass: -11, pad: -10, music: -10, drums: -6, sfx: -6, fx: -10, ...duckDb }
+  const dBass = mulInto(duck(kicks, 0.8, 0.1), under(vg?.env ?? null, VD.bass)), dPad = mulInto(duck(kicks, 0.45, 0.12), under(vg?.env ?? null, VD.pad))
+  const dMus = mulInto(duck(kicks, 0.25, 0.1), under(vg?.env ?? null, VD.music)), dFx = mulInto(duck(kicks, 0.2, 0.12), under(vg?.env ?? null, VD.fx))
+  const dDr = under(vg?.env ?? null, VD.drums), dSfx = under(vg?.env ?? null, VD.sfx)
   const dl = pingPong(B.delay)
   for (let i = 0; i < LEN; i++) {
     B.verb.L[i] += dl.L[i] * 0.3
@@ -484,33 +542,8 @@ export function mixdown({ kicks, sections = [], gains = {} }: MixOpts) {
   const G = { drums: 0.85, bass: 0.9, music: 1, pad: 1, sfx: 1.55, delay: 0.55, verb: 2.4, ...gains }
   const L = new Float32Array(LEN), R = new Float32Array(LEN)
   for (let i = 0; i < LEN; i++) {
-    L[i] = B.drums.L[i] * G.drums + B.bass.L[i] * G.bass * dBass[i] + B.music.L[i] * G.music * dMus[i] + B.pad.L[i] * G.pad * dPad[i] + B.sfx.L[i] * G.sfx + dl.L[i] * G.delay * dFx[i] + rv.L[i] * G.verb * dFx[i]
-    R[i] = B.drums.R[i] * G.drums + B.bass.R[i] * G.bass * dBass[i] + B.music.R[i] * G.music * dMus[i] + B.pad.R[i] * G.pad * dPad[i] + B.sfx.R[i] * G.sfx + dl.R[i] * G.delay * dFx[i] + rv.R[i] * G.verb * dFx[i]
-  }
-  // REPORT=1 bun audio.ts → RMS (dBFS) of each stem per section: the only way to
-  // "hear" the balance (e.g. SFX buried under the music, a section too hot).
-  if (process.env.REPORT && sections.length) {
-    const stems: Record<string, (i: number) => number> = {
-      drums: (i) => B.drums.L[i] + B.drums.R[i],
-      bass: (i) => (B.bass.L[i] + B.bass.R[i]) * G.bass * dBass[i],
-      music: (i) => (B.music.L[i] + B.music.R[i]) * dMus[i],
-      pad: (i) => (B.pad.L[i] + B.pad.R[i]) * dPad[i],
-      sfx: (i) => (B.sfx.L[i] + B.sfx.R[i]) * G.sfx,
-      delay: (i) => (dl.L[i] + dl.R[i]) * G.delay * dFx[i],
-      verb: (i) => (rv.L[i] + rv.R[i]) * G.verb * dFx[i],
-      total: (i) => L[i] + R[i],
-    }
-    const rows = [['stem', ...sections.map((x) => x[0])].map((x) => x.padStart(8)).join(' ')]
-    for (const [k, f] of Object.entries(stems)) {
-      const cells = sections.map(([, a, b]) => {
-        let acc = 0
-        const i0 = S(a), i1 = Math.min(LEN, S(b))
-        for (let i = i0; i < i1; i++) acc += (f(i) / 2) ** 2
-        return (10 * Math.log10(acc / (i1 - i0) + 1e-12)).toFixed(1)
-      })
-      rows.push([k, ...cells].map((x) => x.padStart(8)).join(' '))
-    }
-    console.log(rows.join('\n'))
+    L[i] = B.drums.L[i] * G.drums * dDr[i] + B.bass.L[i] * G.bass * dBass[i] + B.music.L[i] * G.music * dMus[i] + B.pad.L[i] * G.pad * dPad[i] + B.sfx.L[i] * G.sfx * dSfx[i] + dl.L[i] * G.delay * dFx[i] + rv.L[i] * G.verb * dFx[i]
+    R[i] = B.drums.R[i] * G.drums * dDr[i] + B.bass.R[i] * G.bass * dBass[i] + B.music.R[i] * G.music * dMus[i] + B.pad.R[i] * G.pad * dPad[i] + B.sfx.R[i] * G.sfx * dSfx[i] + dl.R[i] * G.delay * dFx[i] + rv.R[i] * G.verb * dFx[i]
   }
   // Master: rumble high-pass, glue compressor, soft clip, fades.
   const mL = svf(L, 28, 0.7, 'hp'), mR = svf(R, 28, 0.7, 'hp')
@@ -538,6 +571,116 @@ export function mixdown({ kicks, sections = [], gains = {} }: MixOpts) {
     const f = fade(i / SR)
     mL[i] = Math.tanh(mL[i] * pre * 1.25) * 0.9 * f
     mR[i] = Math.tanh(mR[i] * pre * 1.25) * 0.9 * f
+  }
+  // Narration: summed AFTER the bed's compressor, soft clip and fades, so its consonants never
+  // saturate and no fade eats a word. Each take is ridden to `voiceOverBed` dB over the ducked bed
+  // (measured on its voiced spans), but never more than 4 dB above the median take: one that needs more is
+  // fighting a hit or a busy moment, and pushing it up would only feed the limiter (REPORT flags
+  // it: move the hit into a breath). finalize.sh then masters the whole mix.
+  const vGainAt = new Float32Array(LEN)
+  let vLim = { max: 0, share: 0 }
+  const takeGain: Record<string, number> = {}
+  // Voice chain, as any voice-over has. First a compressor with an RMS detector (10 ms): 3:1 above
+  // −26 dBFS (takes arrive at −20 LUFS), 5 ms attack, 80 ms release, +5 dB make-up. A real voice
+  // stresses words ~8 dB over the rest of its sentence and peaks ~24 dB over its level; without
+  // this, riding it over the bed hands those peaks to finalize.sh's limiter.
+  if (voice.length) {
+    let ms = 0, env = 0
+    const av = Math.exp(-1 / (0.01 * SR)), at = Math.exp(-1 / (0.005 * SR)), rl = Math.exp(-1 / (0.08 * SR)), thr = db(-26), ratio = 3
+    for (let i = 0; i < LEN; i++) {
+      ms = av * ms + (1 - av) * (B.voice.L[i] ** 2 + B.voice.R[i] ** 2) / 2
+      const lvl = Math.sqrt(ms)
+      env = lvl > env ? at * env + (1 - at) * lvl : rl * env + (1 - rl) * lvl
+      const gr = (env > thr ? Math.pow(env / thr, 1 / ratio - 1) : 1) * db(5)
+      B.voice.L[i] *= gr
+      B.voice.R[i] *= gr
+    }
+  }
+  const voicedOf = (l: VoiceLine): [number, number][] => (vg ? vg.spans.filter(([a, b]) => b > l.t0 - 0.01 && a < l.t1 + 0.01) : [])
+  const perLine: { id: string; v: number; b: number }[] = []
+  if (voice.length) {
+    for (const l of voice) {
+      const r = voicedOf(l)
+      if (!r.length) throw new Error(`voice: no voiced span found for take ${l.id} (${l.t0}–${l.t1} s): its word times are not on the film clock`)
+      perLine.push({ id: l.id, v: pow((i) => [B.voice.L[i], B.voice.R[i]], r), b: pow((i) => [mL[i], mR[i]], r) })
+    }
+    const want = perLine.map((x) => voiceOverBed - (x.v - x.b))
+    const med = [...want].sort((a, b) => a - b)[Math.floor(want.length / 2)]
+    voice.forEach((l, k) => {
+      const g = Math.min(med + 4, want[k]) // lowering a take is always free
+      takeGain[l.id] = g
+      const next = voice[k + 1]
+      for (let i = Math.max(0, S(k ? l.at : 0)); i < Math.min(LEN, next ? S(next.at) : LEN); i++) vGainAt[i] = db(g)
+    })
+    // Then a look-ahead peak limiter on the ridden voice, for what the compressor is too slow
+    // for (plosives, onsets): capped at 15 dB over each take's level, so the voice, not one
+    // consonant, decides the mix's loudness at mastering.
+    for (let i = 0; i < LEN; i++) (B.voice.L[i] *= vGainAt[i]), (B.voice.R[i] *= vGainAt[i])
+    // The ceiling is per take (each was ridden by its own gain).
+    const look = S(0.002), relS = 1 / (0.06 * SR)
+    const need = new Float32Array(LEN).fill(1)
+    const crest: Record<string, number> = {}
+    voice.forEach((l, k) => {
+      const lvl = pow((i) => [B.voice.L[i], B.voice.R[i]], voicedOf(l))
+      const ceil = db(lvl + 15)
+      const next = voice[k + 1]
+      let pkT = 0
+      for (let i = Math.max(0, S(k ? l.at : 0)); i < Math.min(LEN, next ? S(next.at) : LEN); i++) {
+        const p = Math.max(Math.abs(B.voice.L[i]), Math.abs(B.voice.R[i]))
+        pkT = Math.max(pkT, p)
+        if (p > ceil) need[i] = ceil / p
+      }
+      crest[l.id] = 20 * Math.log10(pkT + 1e-12) - lvl
+    })
+    if (process.env.REPORT) console.log('voice crest per take after the compressor (peak − level, dB; the limiter caps it at 15):', Object.entries(crest).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · '))
+    const gl = new Float32Array(LEN).fill(1)
+    for (let i = LEN - 1, m = 1; i >= 0; i--) {
+      // attack (walking backwards): the gain is already down `look` samples before each peak
+      m = Math.min(need[i], m + 1 / look)
+      gl[i] = Math.min(m, need[i])
+    }
+    for (let i = 1; i < LEN; i++) gl[i] = Math.min(gl[i], gl[i - 1] + relS)
+    {
+      let mn = 1, below = 0, n = 0
+      for (const [a, b] of vg!.spans) for (let i = S(a); i < Math.min(LEN, S(b)); i++) (mn = Math.min(mn, gl[i])), (below += gl[i] < db(-1) ? 1 : 0), n++
+      vLim = { max: -20 * Math.log10(mn), share: below / Math.max(1, n) }
+    }
+    let pk = 0
+    for (let i = 0; i < LEN; i++) {
+      mL[i] += B.voice.L[i] * gl[i]
+      mR[i] += B.voice.R[i] * gl[i]
+      pk = Math.max(pk, Math.abs(mL[i]), Math.abs(mR[i]))
+    }
+    if (pk > db(-1)) for (let i = 0; i < LEN; i++) (mL[i] *= db(-1) / pk), (mR[i] *= db(-1) / pk) // finalize.sh restores the level
+  }
+  // REPORT=1 bun audio.ts → power (dBFS, stereo) of each stem per section, with the gains and
+  // ducks the mix applies: the only way to "hear" the balance (SFX buried, a section too hot).
+  // With narration, also voice over bed per take: 8–12 dB reads clearly.
+  if (process.env.REPORT && sections.length) {
+    const st = (b: St, g: number, d?: Float32Array) => (i: number): [number, number] => [b.L[i] * g * (d ? d[i] : 1), b.R[i] * g * (d ? d[i] : 1)]
+    const stems: Record<string, (i: number) => [number, number]> = {
+      drums: st(B.drums, G.drums, dDr),
+      bass: st(B.bass, G.bass, dBass),
+      music: st(B.music, G.music, dMus),
+      pad: st(B.pad, G.pad, dPad),
+      sfx: st(B.sfx, G.sfx, dSfx),
+      delay: st(dl, G.delay, dFx),
+      verb: st(rv, G.verb, dFx),
+      ...(voice.length ? { voice: (i: number): [number, number] => [B.voice.L[i], B.voice.R[i]] } : {}), // ridden and limited
+      total: (i) => [L[i], R[i]],
+    }
+    const rows = [['stem', ...sections.map((x) => x[0])].map((x) => x.padStart(8)).join(' ')]
+    for (const [k, f] of Object.entries(stems)) rows.push([k, ...sections.map(([, a, b]) => pow(f, [[a, b]]).toFixed(1))].map((x) => x.padStart(8)).join(' '))
+    console.log(rows.join('\n') + '\n(stems before the master; total = pre-master mix)')
+    if (voice.length) {
+      console.log('\nvoice over bed, on the voiced spans of each take (after the master; target ' + voiceOverBed + ' dB, 8–12 reads clearly):')
+      console.log(`  (voice peak limiter: up to ${vLim.max.toFixed(1)} dB, ${(vLim.share * 100).toFixed(1)} % of the spoken time more than 1 dB${vLim.share > 0.05 ? '  ← too much: the takes are too dynamic, raise the compression' : ''})`)
+      for (const x of perLine) {
+        const g = takeGain[x.id]
+        const d = x.v + g - x.b // measured before the peak limiter, which only trims transients
+        console.log(`  ${x.id.padEnd(8)} ${d.toFixed(1).padStart(5)} dB  (take ${g >= 0 ? '+' : ''}${g.toFixed(1)} dB)${d < 8 ? '  ← buried even at +4 dB over the other takes: a hit or busy SFX under it (move them into a breath)' : d > 14 ? '  ← the bed vanishes here' : ''}`)
+      }
+    }
   }
   const outPath = new URL('./out/audio_raw.wav', import.meta.url).pathname
   wav(outPath, mL, mR)

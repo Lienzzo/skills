@@ -114,8 +114,12 @@ barely moves, but compare its peak before and after if the user cares about its 
 
 ## Voice
 
-Don't add a voiceover or spoken lines unless the user asks. On-screen text plus music
-works everywhere (muted autoplay, any language), and a synthetic voice was rejected in a
-past production. If they do ask, generate the takes first and derive
-the timeline cues from the real take durations. Duck the music under the voice (a bus
-with its own sidechain).
+Launch, web and social films stay silent: on-screen text plus music works with muted
+autoplay and in any language, and a synthetic voice was rejected in one past launch film.
+Explainers watched with sound (a client meeting, a report walked through) are narrated: see
+`explainer.md`. In short:
+- the takes come first (`scripts/vo.py`), and the timeline is derived from their word times;
+- `placeVoice` puts them on `B.voice`;
+- `mixdown({ voice })` ducks the bed from the word times and rides each take to 8–12 dB over it;
+- `REPORT=1` prints that figure per take;
+- narrated films master to −16 LUFS, not −14 (`LOUDNESS` in timeline.js; see `explainer.md` §5).

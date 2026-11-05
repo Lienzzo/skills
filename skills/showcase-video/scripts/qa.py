@@ -6,8 +6,9 @@ review, run on the actual file (the join, the encode and the audio mux only exis
 
 Blockers (exit 1 until resolved):
   ✗ frame 0 black or an empty background (it is the thumbnail chat apps and X show)
+  ✗ a narrated film (timeline.js VOICE_PROVIDER) still on the scratch voice (`say`)
   ✗ frame count ≠ DURATION × FPS (a bad segment join doubles or truncates), wrong resolution,
-    colour not tagged bt709 (mp4), no audio (mp4), loudness outside −14 ±1 LUFS, true peak > −1 dBTP
+    colour not tagged bt709 (mp4), no audio (mp4), loudness outside −14 ±1 LUFS (timeline.js LOUDNESS: −16 in narrated films), true peak > −1 dBTP
   ✗ moments to review: discontinuities (a frame that changes far more than its neighbours:
     jumps, pops, stray cuts) and near-black stretches that are not planned. Planned = a SCENES
     boundary (±0.12 s), inside a scene marked {montage: true}, or listed in timeline.js
@@ -31,12 +32,16 @@ name = os.path.splitext(os.path.basename(video))[0]
 out = os.path.join(src, 'out', 'qa', name)
 shutil.rmtree(out, ignore_errors=True); os.makedirs(out)
 
-TL_JS = "import('./timeline.js').then(m => console.log(JSON.stringify({D: m.DURATION, F: m.FPS, W: m.W, H: m.H, S: m.SCENES || null, I: m.INTENDED || [], fade: (m.T && m.T.fadeOut) || null})))"
+TL_JS = "import('./timeline.js').then(m => console.log(JSON.stringify({D: m.DURATION, F: m.FPS, W: m.W, H: m.H, S: m.SCENES || null, I: m.INTENDED || [], fade: (m.T && m.T.fadeOut) || null, VP: m.VOICE_PROVIDER || null, LU: m.LOUDNESS ?? -14})))"
 tl = json.loads(run(['node', '-e', TL_JS], cwd=src).stdout)
 blockers, notes, review = [], [], []
 def ok(msg): print(f'✓ {msg}')
 def bad(msg): blockers.append(msg); print(f'✗ {msg}')
 def note(msg): notes.append(msg); print(f'• {msg}')
+if tl.get('VP') == 'say':
+    bad('narration is the scratch voice (vo.py --provider say): fine for timing, never for delivery. Regenerate with `vo.py build <src>` (ElevenLabs) or record it (--provider file)')
+elif tl.get('VP'):
+    ok(f"narration: {tl['VP']}")
 
 # ── stream facts ───────────────────────────────────────────────────────────────
 v = json.loads(run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_packets', '-show_entries', 'stream=width,height,color_space,nb_read_packets', '-of', 'json', video]).stdout)['streams'][0]
@@ -131,7 +136,7 @@ if has_audio:
     log = run(['ffmpeg', '-hide_banner', '-nostats', '-i', video, '-vn', '-af', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-']).stderr
     I = float(re.findall(r'I:\s+(-?[\d.]+) LUFS', log)[-1])
     TP = float(re.findall(r'Peak:\s+(-?[\d.]+) dBFS', log)[-1])
-    (ok if abs(I + 14) <= 1 else bad)(f'loudness {I} LUFS (target −14)')
+    (ok if abs(I - tl['LU']) <= 1 else bad)(f"loudness {I} LUFS (target {tl['LU']})")
     (ok if TP <= -0.9 else bad)(f'true peak {TP} dBTP (max −1)')
     log = run(['ffmpeg', '-hide_banner', '-i', video, '-vn', '-af', 'silencedetect=noise=-50dB:d=0.6', '-f', 'null', '-']).stderr
     for a, b in re.findall(r'silence_start: ([\d.]+)[\s\S]*?silence_end: ([\d.]+)', log):

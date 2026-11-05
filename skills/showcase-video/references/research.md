@@ -175,6 +175,10 @@ the last one:
   prescriptions, invoices, maps.
 - **The invisible work.** What happens that has no UI (retrieval, indexing, delegation),
   and a metaphor for it drawn from the shapes above.
+- **The proofs.** For each thing the film will claim, the real artifact that shows it: the
+  document, the screen, the figure, the click and what it changes. These become the
+  storyboard's mechanism column. A claim with no artifact needs one found or is cut.
+  Metaphors are only for the invisible work above.
 - **Tone.** Calm and exact, playful, urgent? It sets tempo, key, world (dark or light)
   and easing.
 

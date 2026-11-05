@@ -1,6 +1,6 @@
 ---
 name: showcase-video
-description: Make polished motion-design product videos (launch, promo, showcase, teaser, demo reel, social reel in 16:9, 9:16, 1:1 or 4:5) entirely in code. Scenes are frame-exact HTML rendered with headless Chromium and ffmpeg, with an original synthesized soundtrack and SFX synced to one timeline. It asks a few multiple-choice questions to pin down the film, researches reference launch videos and the real product's UI and brand, then proposes distinct concepts rooted in that product. The user approves one plan (storyboard and assets). After that it produces autonomously in a build → review → fix loop, with an independent reviewer and automated QA, until the video passes. Use it whenever someone asks for a promo, launch, showcase, explainer or motion-design video, an animated demo of their app or SaaS, "un vídeo promocional / de lanzamiento", or to fix or iterate on one of these videos, even if they never say "motion design".
+description: Make polished motion-design product videos (launch, promo, showcase, teaser, demo reel, social reel in 16:9, 9:16, 1:1 or 4:5) entirely in code. Scenes are frame-exact HTML rendered with headless Chromium and ffmpeg, with an original synthesized soundtrack and SFX synced to one timeline, and an optional narrated mode (ElevenLabs voice whose takes time the cut) for explainers and client meetings. It asks a few multiple-choice questions to pin down the film, researches reference launch videos and the real product's UI and brand, then proposes distinct concepts rooted in that product. The user approves one plan (storyboard and assets). After that it produces autonomously in a build → review → fix loop, with an independent reviewer and automated QA, until the video passes. Use it whenever someone asks for a promo, launch, showcase, explainer or motion-design video, an animated demo of their app or SaaS, a narrated walkthrough of a report or audit for a client, "un vídeo promocional / de lanzamiento", "un vídeo explicativo con voz", or to fix or iterate on one of these videos, even if they never say "motion design".
 ---
 
 # Showcase video
@@ -62,6 +62,11 @@ rest as **multiple-choice questions**, never as an open questionnaire:
 | Where will it play? (multi-select) | web hero (16:9, 30–45 s, may loop) · social (9:16 or 4:5, 15–30 s, readable muted) · chat apps and email (16:9, ≤ 60 s, share copy) · event screen (16:9, 60–90 s) | `FORMAT`(s), length, text size |
 | Who watches? | people who don't know it · its users · the client's own team · investors | how much to explain |
 | What tone? | calm and exact · energetic · warm and human · premium and restrained | tempo, key, world, easing |
+| Voice? | silent: music, SFX and on-screen text · narrated: a voice carries the message | explainer mode (`references/explainer.md`) |
+
+On "Voice?": recommend **narrated** when the film is an explainer or demo watched with sound
+(a client meeting, a report walked through); recommend **silent** for launch, web hero and
+social (they autoplay muted). Ask only if the purpose leaves it open.
 
 Every extra format is reframed, reviewed and QA'd on its own: say so when they pick several.
 
@@ -72,6 +77,7 @@ Every extra format is reframed, reviewed and QA'd on its own: say so when they p
 | Which moment should the film build to? | 2–4 candidate "magic moments" from the product's real flows | the drop, the longest shot |
 | Music? | an original synthesized score (nothing to license) · a track they supply or license (measured with `scripts/beats.py`) · only UI sound | `audio.ts` |
 | Real data or demo data? | real, anonymized (needs their OK and a login: `capture.mjs`) · invented but plausible | fidelity, captures |
+| Which voice? (narrated only) | 2–3 voices from the account (`scripts/vo.py voices`) that fit the language, accent and tone | the takes |
 
 Also needed, asked plainly only if unknown: the product (repo, URL, app) and the on-screen
 language (default: the product's own).
@@ -133,8 +139,19 @@ Present everything in one message:
 2. **Storyboard for the recommended direction,** on a 120 BPM grid (bar = 2 s, cuts on
    bar lines), with the musical arc (intro, drop, breakdown, build, drop 2, resolve):
 
-   | Bars / time | Scene | Shot | What happens (real UI piece) | Into next | Sound |
-   |---|---|---|---|---|---|
+   | Bars / time | Scene | Claim (what it says) | Mechanism: what proves it on screen | Shot | Into next | Sound |
+   |---|---|---|---|---|---|---|
+
+   **Every row has a mechanism:** the real thing on screen that makes the claim true. That
+   can be a real document with the row marked, a click and the state it changes, or a real
+   figure landing. A row whose claim is only stated in text isn't approved. **The real artifact
+   comes before a metaphor**, which is only for work with no picture (indexing, a model
+   reading). In a past film the client rejected an abstract "rules" panel and asked for their
+   real contract with their row highlighted.
+
+   **Narrated films** (explainer mode): the rows are the script's takes. *Claim* is the line
+   the voice says, the time column is an estimate (≈ 2.5 words/s) until the takes exist, and
+   cuts fall in the breaths between takes, not on bar lines. See `references/explainer.md`.
 
    With a supplied track, the grid is the track's: measure it first (`scripts/beats.py`)
    and put cuts on its bar lines and the drop on its biggest energy jump.
@@ -158,8 +175,8 @@ great*).
 
 **Ask for the approval as a choice,** not as "ok?": in Claude Code, one `AskUserQuestion`
 with one option per direction (the recommended one first), each with a `preview` holding
-its logline and its beat list with times (6–10 lines), so the three structures sit side
-by side. The user can still answer "Other" with changes. If they pick a direction other
+its logline and its beat list with times (6–10 lines, each with its claim → mechanism), so
+the three structures sit side by side. The user can still answer "Other" with changes. If they pick a direction other
 than the recommended one, write its storyboard and confirm that once.
 
 Say explicitly that after approval you'll produce the whole video autonomously and come
@@ -173,7 +190,9 @@ you resume after a context reset.
 
 1. **Set up.**
    - `scripts/new_project.sh ~/Videos/<product>-showcase` copies `template/`, a working
-     14 s demo, into `src/` with git, and checks the tools (Playwright included).
+     14 s demo, into `src/` with git, and checks the tools (Playwright included). For a
+     narrated film add `--explainer`, write `src/VO.md`, and generate the takes before the
+     first scene (`references/explainer.md` §3): the takes set the timeline.
    - Run the smoke test it prints.
    - Save the approved plan as `src/STORYBOARD.md`. It holds:
      - the chosen direction;
@@ -299,7 +318,8 @@ preferences to the profile, not one-off fixes.
 - **Faithful to the real product:** real logo (traced, never redrawn), real theme, real
   strings, real flows. Never show features the product lacks.
 - **The brand name, not a feature's name.**
-- **No voiceover** unless asked.
+- **Voice:** none in launch, web and social films; narrated in explainers watched with sound
+  (recommended in Round 1, `references/explainer.md`).
 - **Minimal copy** in the product's language.
 - **Official store badges,** unmodified, at equal visual height.
 - **Every delivered version kept.**
@@ -317,11 +337,14 @@ preferences to the profile, not one-off fixes.
     `render-segs.sh`, `watchdog.sh`, `finalize.sh`;
   - `capture.mjs` (real screens of the app), `montage.mjs` (labelled sheets drawn by
     Chromium), `pw.mjs` (finds Playwright and its browsers);
-  - `trace_logo.py` and `gen-icons.mjs`.
+  - `trace_logo.py` and `gen-icons.mjs`;
+  - `explainer/` (copied by `new_project.sh --explainer`): the voice-driven `timeline.js` and
+    `audio.ts`, a sample `VO.md`; `voice.js` lays the takes on the clock.
 - `scripts/`:
   - `new_project.sh`, `analyze_refs.py`, `asset_sheet.sh`, `store_badges.sh`;
   - `pdf_passage.py`: a real document page plus the boxes of a quoted passage;
   - `beats.py`: tempo, bar lines and sections of a supplied track;
+  - `vo.py`: the narration's takes (ElevenLabs, scratch or recorded) and their word times;
   - `qa.py`: automated checks on the rendered file.
 - `references/`:
   - `research.md`: references, product fidelity, fact-checking, case studies;
@@ -329,4 +352,5 @@ preferences to the profile, not one-off fixes.
   - `engine.md`: rules, API, cookbook, pitfalls;
   - `quality-loop.md`: rubric, reviewer prompt, exit criteria;
   - `audio.md`;
+  - `explainer.md`: the narrated mode (script, takes, cut, ducking, review);
   - `render-deliver.md`.
