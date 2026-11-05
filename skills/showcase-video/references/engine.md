@@ -108,11 +108,22 @@ pops open) go in `INTENDED`, so QA doesn't flag them as jumps.
 | `cursorAt(cur, ring, from, to, a, b, click, t)` | Cursor on a slight arc, press squash, click ring. |
 | `makeLink(svg).at(t, a, b, t0, t1)` | A comet line from point a to b (phrase → field, citation → passage): trail, glowing head, arrival burst. The svg is a full-stage overlay inside the same camera. |
 | `tapAt(el, t, x, y, at)` | A touch indicator for phones: presses in at `at`, then fades. Returns whether it's visible, so taps chain with `||`. |
+| `clipAt(img, clip, at, t, {from, hold})` | A real video, frame-exact: shows frame `(t − at + from) × fps` of a sequence from `scripts/frames.sh`; hidden before `at`, holds its last frame after (or hides with `hold: false`). render.mjs waits for each frame to decode before capturing. |
 | `ic(name)` | An inline icon from `assets/icons.js`. |
 | `grainTiles` / `drawGrain` | Film grain (seeded per frame). |
 
 ## 5. Cookbook
 
+- **A real video in a scene** (the app's own splash or loading animation, a screen
+  recording, a phone capture). `scripts/frames.sh splash.mov src splash --width 1180` writes
+  PNG frames, alpha kept, and `assets/clips/splash/clip.js`. In the scene: an
+  `<img src="assets/clips/splash/0001.png">` sized like the clip, and
+  `clipAt(img, SPLASH, T.splash, t, { from: 2.3 })` in `at(t)`. It is part of the page, so the
+  camera, the cuts, the review sheets, the reading lint and the reviewer all see it. A film once
+  laid the real splash over the finished render with ffmpeg: it worked, but no sheet ever showed
+  the end card as delivered. Scale it at extraction to the size it's shown at (`--width`, × the
+  DSF you render at): 149 frames at 1180 px are 35 MB. Its sound: `loadTrack()` in audio.ts at
+  the same time.
 - **Logo draw-on.**
   - `trace_logo.py` splits the logo into connected pieces and contour loops, and
     `makeLogo()` strokes the loops smallest-first, then fades in the fill.
@@ -186,7 +197,10 @@ pops open) go in `INTENDED`, so QA doesn't flag them as jumps.
 - **State carried between frames.** A style set in one branch of `at(t)` and never reset
   looks right when played forward and wrong when a render worker or a resumed segment
   reaches that frame from elsewhere. Set every style on every frame inside the scene's
-  window; `review` lints for it (frames that change when reached backwards).
+  window; `review` lints for it: it compares each probed frame reached forwards from a fresh
+  page with the same frame reached backwards, on the DOM (computed styles, attributes, text and
+  2D canvases of everything visible), and names the element and the property that differ. A
+  page with a WebGL canvas falls back to comparing pixels.
 - **Hardcoded stage size.** 1920, 1080, 960 or 540 in a scene breaks every other format.
   Use `W`, `H`, `var(--W)`, `var(--H)`.
 - **Duplicate DOM ids across scenes.** Two modules both used `#pin`. One scene styled

@@ -319,3 +319,25 @@ export function drawGrain(ctx, tiles, t) {
   ctx.fillStyle = tiles[f % tiles.length]
   ctx.fillRect(0, 0, W / 2 + 256, H / 2 + 256)
 }
+
+// ── video clips ──────────────────────────────────────────────────────────────
+// A real video (the app's splash with its alpha, a screen recording) as the frame sequence
+// scripts/frames.sh writes, shown by an <img>: the frame is a pure function of t like everything
+// else, and it appears in every review sheet. render.mjs waits for the frame to decode before
+// each capture (window.__settle). Start the <img> on the first frame (src=".../0001.png"): an
+// <img> with no src fails __ready. Before `at` it is hidden; past its last frame it holds it
+// (hold: false hides it). `from` skips seconds at the start of the clip. Its sound, if any:
+// loadTrack(file, from) in audio.ts, placed at the same `at`.
+//   import SPLASH from './assets/clips/splash/clip.js'
+//   clipAt($('#splash'), SPLASH, T.splash, t, { from: 2.3 })
+const pendingFrames = (globalThis.__pending ??= [])
+export function clipAt(img, clip, at, t, { from = 0, hold = true } = {}) {
+  const i = Math.floor((t - at + from) * clip.fps + 1e-6)
+  const on = t >= at && (hold || i < clip.n)
+  img.style.visibility = on ? 'visible' : 'hidden'
+  if (!on) return
+  const src = `${clip.dir}/${String(Math.min(clip.n - 1, Math.max(0, i)) + 1).padStart(4, '0')}.png`
+  if (img.getAttribute('src') === src) return
+  img.setAttribute('src', src)
+  pendingFrames.push(img.decode().catch(() => { throw new Error(`clip frame failed to load: ${src}`) }))
+}

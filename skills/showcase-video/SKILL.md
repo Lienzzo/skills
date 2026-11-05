@@ -214,6 +214,9 @@ you resume after a context reset.
      - its tokens into `:root`.
    - Captured screens: write `src/capture-shots.mjs` with `capture.mjs` (login first if
      the app needs one: `node capture.mjs login <url>`, the human types the password).
+   - Real video (the app's splash animation, a screen recording): `scripts/frames.sh <video>
+     src <name>` and `clipAt()` in the scene (`references/engine.md` § Cookbook). Never laid
+     over the render afterwards with ffmpeg: the review loop wouldn't see it.
    - Write `timeline.js`: `T` cues, the `SCENES` windows, and `INTENDED` (planned
      instant changes). A supplied track: its BPM and first downbeat from `beats.py`.
    - Delete the `demo-*.js` scenes once the first real scene renders.
@@ -345,6 +348,7 @@ preferences to the profile, not one-off fixes.
   - `pdf_passage.py`: a real document page plus the boxes of a quoted passage;
   - `beats.py`: tempo, bar lines and sections of a supplied track;
   - `vo.py`: the narration's takes (ElevenLabs, scratch or recorded) and their word times;
+  - `frames.sh`: a real video (alpha kept) as the frame sequence `clipAt()` shows;
   - `qa.py`: automated checks on the rendered file.
 - `references/`:
   - `research.md`: references, product fidelity, fact-checking, case studies;

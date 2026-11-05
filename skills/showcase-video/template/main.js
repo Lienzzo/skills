@@ -60,6 +60,8 @@ window.__ready = (async () => {
   return true
 })()
 window.__seek = seek
+// Frames still decoding after a seek (clipAt): render.mjs awaits this before every capture.
+window.__settle = () => Promise.all((globalThis.__pending ??= []).splice(0))
 // How much of the stage the global covers hide right now (0 clear … 1 hidden): the reading lint
 // in render.mjs multiplies text opacity by 1 − this. Add any full-frame cover you introduce.
 window.__veil = () => Number($('#fade').style.opacity || 0)

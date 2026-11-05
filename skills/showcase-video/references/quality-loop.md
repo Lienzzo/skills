@@ -44,8 +44,8 @@ The review pack in `out/review/<tag>/` contains:
 - `cut-<t>.png`: ±0.3 s around each planned cut at 0.05 s;
 - `phone-<n>.png`: one frame per bar at 390 px wide, the size a phone shows it;
 - `lint.md`, with four checks:
-  - text partly outside the frame;
-  - frames that change with seek order;
+  - text partly outside the frame (not text inside `data-read="0"`: a code wall cropped on purpose);
+  - frames that change with seek order (the element and property that kept the state);
   - page errors;
   - **the reading lint.** Every `data-read` text is measured against 0.4 s per word + 0.5 s,
     a second text arriving while the first still needs its time is flagged, and so is its size

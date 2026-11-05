@@ -105,7 +105,7 @@ async function openPage(browser, url, dsf) {
   await pageReady(page)
   const cdp = await ctx.newCDPSession(page)
   const shot = async (t, scale = 1) => {
-    await page.evaluate((t) => window.__seek(t), t)
+    await page.evaluate(async (t) => (window.__seek(t), await window.__settle?.()), t)
     const clip = scale === 1 ? undefined : { x: 0, y: 0, width: W, height: H, scale }
     const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true, clip })
     return Buffer.from(data, 'base64')
@@ -134,21 +134,77 @@ async function phoneSheets(shot, ts, dir) {
 }
 
 // Seek order must not matter: render workers and segments jump around the timeline. A frame
-// shot playing forward from a fresh page vs reached backwards that differs means at(t) leaves
-// state behind (a style set in one branch and never reset).
+// reached playing forward from a fresh page vs reached backwards that differs means at(t) leaves
+// state behind (a style set in one branch and never reset). Compared on the DOM, not the pixels:
+// computed styles, own text, src/d attributes and 2D canvases of every element. Pixels alone
+// differ through rasterisation noise in dense layers (a wall of code under a camera move gave 18
+// false alarms in one film), and the DOM also says WHICH element kept the state. A WebGL canvas
+// can't be read back, so a page with one falls back to the pixel comparison.
+async function domState(page) {
+  return page.evaluate(() => {
+    const out = []
+    let gl = false
+    const canvasSig = (c) => {
+      let ctx = null
+      try { ctx = c.getContext('2d', { willReadFrequently: true }) } catch {}
+      if (!ctx) return (gl = true), 'gl'
+      if (!c.width || !c.height) return '0'
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let h = 0
+      for (let i = 0; i < d.length; i += 4 * 97) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7 + d[i + 3] * 11) >>> 0
+      return String(h)
+    }
+    // One line per visible element: its path, then "prop=value" pairs: the computed values that
+    // change what is painted, its attributes (an SVG path's d, an image's src) and its own text.
+    // Computed, not inline: "opacity never set" and "opacity: 1" paint the same. A subtree that
+    // paints nothing (display none, visibility hidden, opacity 0) is not compared: a hidden scene
+    // may keep whatever it last had.
+    const PROPS = ['opacity', 'transform', 'visibility', 'filter', 'clip-path', 'color', 'background-color', 'width', 'height', 'left', 'top', 'stroke-dashoffset', 'fill', 'stroke']
+    const walk = (el, p) => {
+      const cs = getComputedStyle(el)
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return
+      const kv = PROPS.map((k) => `${k}=${cs.getPropertyValue(k)}`)
+      for (const at of [...el.attributes].sort((x, y) => (x.name < y.name ? -1 : 1))) if (at.name !== 'style' && at.name !== 'class') kv.push(`@${at.name}=${at.value}`)
+      for (const n of el.childNodes) if (n.nodeType === 3 && n.textContent.trim()) kv.push(`text=${n.textContent.trim().slice(0, 80)}`)
+      if (el.tagName === 'CANVAS') kv.push(`canvas=${canvasSig(el)}`)
+      out.push([p, kv.join('\u0001')])
+      let i = 0
+      for (const c of el.children) walk(c, `${p} > ${c.id ? '#' + c.id : c.tagName.toLowerCase() + (typeof c.className === 'string' && c.classList[0] ? '.' + c.classList[0] : '')}:${i++}`)
+    }
+    walk(document.body, 'body')
+    return { lines: out, gl }
+  })
+}
+// "div.card:0 in #s2: opacity 1 (forwards) vs 0 (backwards)" from two snapshots of the same element.
+function whatDiffers(a, b) {
+  if (!a || !b) return `${(a || b)[0]}: ${!a ? 'exists only when reached backwards' : 'exists only when reached forwards'}`
+  const props = (x) => Object.fromEntries(x[1].split('\u0001').filter(Boolean).map((kv) => [kv.slice(0, kv.indexOf('=')), kv.slice(kv.indexOf('=') + 1)]))
+  const pa = props(a), pb = props(b)
+  const diff = Object.keys({ ...pa, ...pb }).filter((k) => pa[k] !== pb[k]).slice(0, 3).map((k) => `${k} ${String(pa[k] ?? '(unset)').slice(0, 40)} forwards vs ${String(pb[k] ?? '(unset)').slice(0, 40)} backwards`)
+  return `${a[0].split(' > ').slice(-3).join(' > ')}: ${diff.join('; ')}`
+}
 async function orderLint(page, shot, ts) {
   page.__err = undefined
   await page.reload()
   await pageReady(page)
   const fwd = new Map()
-  for (const t of ts) fwd.set(t, await shot(t))
+  for (const t of ts) fwd.set(t, { png: await shot(t), dom: await domState(page) })
   const bad = []
   const dir = fs.mkdtempSync(path.join(OUT, 'order-'))
   try {
     const [fa, fb] = [path.join(dir, 'a.png'), path.join(dir, 'b.png')]
     for (const t of [...ts].reverse()) {
-      const a = fwd.get(t)
+      const { png: a, dom: da } = fwd.get(t)
       const b = await shot(t)
+      const db = await domState(page)
+      if (!da.gl) {
+        const k = da.lines.findIndex((l, i) => !db.lines[i] || l[0] !== db.lines[i][0] || l[1] !== db.lines[i][1])
+        if (k >= 0 || da.lines.length !== db.lines.length) {
+          const i = k >= 0 ? k : Math.min(da.lines.length, db.lines.length)
+          bad.push({ t, what: whatDiffers(da.lines[i], db.lines[i]) })
+        }
+        continue
+      }
       if (a.equals(b)) continue
       // Big blurs (shadows) rasterise with ±1-level noise: count only pixels off by more than 3 %.
       fs.writeFileSync(fa, a)
@@ -157,7 +213,7 @@ async function orderLint(page, shot, ts) {
       const r = spawnSync('magick', ['compare', '-metric', 'AE', '-fuzz', '3%', fa, fb, 'null:'], { encoding: 'utf8' })
       const ae = parseFloat(r.stderr)
       if (!Number.isFinite(ae)) throw new Error(`magick compare failed at ${t} s: ${(r.error?.message || r.stderr || 'no output').trim()}`)
-      if (ae > 20) bad.push(t)
+      if (ae > 20) bad.push({ t, what: 'pixels (page has a WebGL canvas: no DOM comparison)' })
     }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
@@ -176,6 +232,7 @@ async function offFrameText(page, t) {
       const text = n.textContent.trim()
       const el = n.parentElement
       if (!text || !el || !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue
+      if (el.closest('[data-read="0"]')) continue // not meant to be read (a code wall cropped on purpose)
       let o = 1
       for (let e = el; e; e = e.parentElement) o *= Number(getComputedStyle(e).opacity)
       if (o < 0.3) continue
@@ -392,7 +449,13 @@ if (mode === 'preview') {
   lines.push('', '## Lint: frames that depend on seek order (state carried between frames)', '')
   const probe = scenes.flatMap(([, a, b]) => range(a, b - 0.01, Math.max(0.25, DURATION / 48)))
   const unstable = await orderLint(page, shot, probe)
-  lines.push(unstable.length ? `- differ when reached backwards at: ${unstable.join(', ')} s — find the style at(t) sets in one branch and never resets` : 'none')
+  if (!unstable.length) lines.push('none')
+  else {
+    lines.push(`State left behind by an earlier frame (find the style at(t) sets in one branch and never resets):`, '')
+    const byWhat = new Map()
+    for (const u of unstable) byWhat.set(u.what, [...(byWhat.get(u.what) || []), u.t])
+    for (const [what, ts] of byWhat) lines.push(`- ${what} — at ${ts.length > 4 ? `${ts[0]}–${ts.at(-1)} s (${ts.length} frames)` : ts.join(', ') + ' s'}`)
+  }
   lines.push('', '## Lint: text partly outside the frame', '')
   const seen = new Map()
   for (const [, a, b] of scenes)
