@@ -51,6 +51,6 @@ export default { dir: 'assets/clips/$NAME', fps: $FPS, n: $N, w: $W, h: $H, alph
 EOF
 SIZE=$(du -sh "$OUT" | cut -f1)
 echo "$OUT: $N frames · ${W}×${H} · $FPS fps · alpha $ALPHA · $SIZE"
-if [ "$ALPHA" = false ] && [[ $PIX == *a* || $PIX == yuva* ]]; then
+if [ "$ALPHA" = false ] && [[ $PIX == yuva* || $PIX == *rgba* || $PIX == *bgra* || $PIX == *argb* || $PIX == *abgr* ]]; then
   echo "warning: the source says $PIX but the frames came out opaque — this ffmpeg build may not decode its alpha" >&2
 fi

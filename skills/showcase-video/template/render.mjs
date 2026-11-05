@@ -159,13 +159,14 @@ async function domState(page) {
     // Computed, not inline: "opacity never set" and "opacity: 1" paint the same. A subtree that
     // paints nothing (display none, visibility hidden, opacity 0) is not compared: a hidden scene
     // may keep whatever it last had.
-    const PROPS = ['opacity', 'transform', 'visibility', 'filter', 'clip-path', 'color', 'background-color', 'width', 'height', 'left', 'top', 'stroke-dashoffset', 'fill', 'stroke']
+    const PROPS = ['opacity', 'transform', 'visibility', 'filter', 'backdrop-filter', 'clip-path', 'mask-image', 'mix-blend-mode', 'z-index', 'color', 'background-color', 'background-image', 'background-position', 'border-color', 'border-radius', 'box-shadow', 'outline-color', 'width', 'height', 'left', 'top', 'right', 'bottom', 'padding', 'margin', 'font-size', 'font-weight', 'letter-spacing', 'text-shadow', 'stroke-dashoffset', 'stroke-dasharray', 'fill', 'stroke', 'stroke-width']
     const walk = (el, p) => {
       const cs = getComputedStyle(el)
       if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return
       const kv = PROPS.map((k) => `${k}=${cs.getPropertyValue(k)}`)
       for (const at of [...el.attributes].sort((x, y) => (x.name < y.name ? -1 : 1))) if (at.name !== 'style' && at.name !== 'class') kv.push(`@${at.name}=${at.value}`)
       for (const n of el.childNodes) if (n.nodeType === 3 && n.textContent.trim()) kv.push(`text=${n.textContent.trim().slice(0, 80)}`)
+      if (el.scrollTop || el.scrollLeft) kv.push(`scroll=${el.scrollLeft},${el.scrollTop}`)
       if (el.tagName === 'CANVAS') kv.push(`canvas=${canvasSig(el)}`)
       out.push([p, kv.join('\u0001')])
       let i = 0

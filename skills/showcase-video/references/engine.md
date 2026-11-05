@@ -122,7 +122,8 @@ pops open) go in `INTENDED`, so QA doesn't flag them as jumps.
   camera, the cuts, the review sheets, the reading lint and the reviewer all see it. A film once
   laid the real splash over the finished render with ffmpeg: it worked, but no sheet ever showed
   the end card as delivered. Scale it at extraction to the size it's shown at (`--width`, × the
-  DSF you render at): 149 frames at 1180 px are 35 MB. Its sound: `loadTrack()` in audio.ts at
+  DSF you render at): 149 frames at 1180 px are 35 MB, and render-segs.sh hashes them on every
+  run. Its sound: `loadTrack()` in audio.ts at
   the same time.
 - **Logo draw-on.**
   - `trace_logo.py` splits the logo into connected pieces and contour loops, and

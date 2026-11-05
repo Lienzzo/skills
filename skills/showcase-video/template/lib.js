@@ -330,7 +330,7 @@ export function drawGrain(ctx, tiles, t) {
 // loadTrack(file, from) in audio.ts, placed at the same `at`.
 //   import SPLASH from './assets/clips/splash/clip.js'
 //   clipAt($('#splash'), SPLASH, T.splash, t, { from: 2.3 })
-const pendingFrames = (globalThis.__pending ??= [])
+const pendingFrames = (globalThis.__pending ??= new Map()) // latest decode per <img>
 export function clipAt(img, clip, at, t, { from = 0, hold = true } = {}) {
   const i = Math.floor((t - at + from) * clip.fps + 1e-6)
   const on = t >= at && (hold || i < clip.n)
@@ -339,5 +339,8 @@ export function clipAt(img, clip, at, t, { from = 0, hold = true } = {}) {
   const src = `${clip.dir}/${String(Math.min(clip.n - 1, Math.max(0, i)) + 1).padStart(4, '0')}.png`
   if (img.getAttribute('src') === src) return
   img.setAttribute('src', src)
-  pendingFrames.push(img.decode().catch(() => { throw new Error(`clip frame failed to load: ${src}`) }))
+  // A decode superseded by a later seek (the lints seek without waiting) rejects: not an error.
+  pendingFrames.set(img, img.decode().catch(() => {
+    if (img.getAttribute('src') === src) throw new Error(`clip frame failed to load: ${src}`)
+  }))
 }
