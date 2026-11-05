@@ -25,7 +25,7 @@ export function build() {
                need 7.3 s). In a real film, text the viewer must read is declared and held; or pull out its key words. -->
           <div class="s2-a" data-read="0"><p>${streamHTML(ANSWER)}</p></div>
         </div>
-        <div class="s2-composer"><span class="s2-input" data-ph="Ask anything…"></span><div class="s2-send">${ic('arrow-up')}</div></div>
+        <div class="s2-composer"><span class="s2-input" data-read="0" data-ph="Ask anything…"></span><div class="s2-send">${ic('arrow-up')}</div></div>
       </div>
     </div>
     ${CURSOR}<div class="ring"></div>`

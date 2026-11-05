@@ -19,4 +19,4 @@ missing=()
 for c in node bun ffmpeg ffprobe magick uv; do command -v $c >/dev/null || missing+=($c); done
 [ ${#missing[@]} -gt 0 ] && echo "missing tools: ${missing[*]}"
 command -v node >/dev/null && (cd "$SRC" && node pw.mjs) || true
-echo "$SRC ready. Smoke test: cd $SRC && node render.mjs sheet 0.5 2 3.9 5.5 7 8.6 10.6 11"
+echo "$SRC ready. Smoke test: cd $SRC && node render.mjs sheet 0 2 3.9 5.5 7 8.6 10.6 12.5 && node render.mjs review"

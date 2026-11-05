@@ -200,8 +200,8 @@ async function offFrameText(page, t) {
 // - a text of 3+ words that lands while another one still needs its reading time is "two things
 //   to read at once";
 // - its size on a 390 px-wide phone (font size × camera scale × 390 / W);
-// - big text on screen that isn't declared at all is listed, and a scene that shows text but
-//   declares none is NOT CHECKED: never a pass.
+// - text of 22 px or more that isn't declared at all is listed (and counts as a problem), and a
+//   scene that shows such text but declares none is NOT CHECKED: never a pass.
 const READ_STEP = 1 / 15
 async function readProbe(page, t) {
   await page.evaluate((t) => window.__seek(t), t)
@@ -248,16 +248,22 @@ async function readProbe(page, t) {
       out.declared.push({ id, label, text, ok, px: ok ? pxSize(el) : 0 })
     }
     if (window.__readNext === undefined || next > window.__readNext) window.__readNext = next
-    // Big text nobody declared: words visible at ≥ 0.85 opacity and ≥ 3 % of the frame's width tall.
+    // Text nobody declared: visible at ≥ 0.85 opacity and ≥ 22 px on the stage (a normal caption
+    // is 32–48 px; rebuilt UI text under a zoom gets there too: put data-read="0" on its window).
+    // Reported once per block, so a headline split into word spans is one entry.
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
     for (let n = walk.nextNode(); n; n = walk.nextNode()) {
       const p = n.parentElement
       const text = n.textContent.trim()
       if (!text || !p || p.closest('[data-read]') || !shown(p)) continue
-      if (opacityOf(p) * (1 - veil) < 0.85 || pxSize(p) < W * 0.03) continue
+      if (opacityOf(p) * (1 - veil) < 0.85 || pxSize(p) < 22) continue
       const r = document.createRange()
       r.selectNodeContents(n)
-      if (inFrame(r.getBoundingClientRect())) out.loose.push(text.slice(0, 50))
+      if (!inFrame(r.getBoundingClientRect())) continue
+      const blk = p.closest('h1,h2,h3,h4,h5,h6,p,li,div') ?? p
+      window.__looseIds ??= new WeakMap()
+      if (!window.__looseIds.has(blk)) window.__looseIds.set(blk, (window.__looseNext = (window.__looseNext ?? 0) + 1))
+      out.loose.push({ key: window.__looseIds.get(blk), text: blk.textContent.replace(/\s+/g, ' ').trim().slice(0, 50) || text.slice(0, 50) })
     }
     return out
   }, { W, H })
@@ -295,7 +301,11 @@ async function readingLint(page, scenes, phoneMin) {
   for (const [k, t] of range(a0, b0 - 1e-6, READ_STEP).entries()) {
     const sid = sceneAt(t)
     const { declared, loose: lz } = await readProbe(page, t)
-    for (const s of lz) if (!loose.has(s)) loose.set(s, [sid, t])
+    for (const { key, text } of lz) {
+      const seen = loose.get(key) // one entry per block: first time seen, longest text (typing grows)
+      if (!seen) loose.set(key, [sid, t, text])
+      else if (text.length > seen[2].length) seen[2] = text
+    }
     for (const d of declared) {
       if (d.ok) declaredIn.set(sid, declaredIn.get(sid) + 1)
       let r = open.get(d.id)
@@ -337,11 +347,11 @@ async function readingLint(page, scenes, phoneMin) {
     }
   const unchecked = [...declaredIn].filter(([sid, n]) => !n && [...loose.values()].some(([s]) => s === sid)).map(([sid]) => sid)
   lines.push(`Rule: ≥ 0.4 s per word + 0.5 s, one thing to read at a time, ≥ ${phoneMin} px on a 390 px phone. Sampled every ${READ_STEP.toFixed(3)} s from the DOM (\`data-read\`).`, '')
-  lines.push(unchecked.length ? `**NOT CHECKED** — scenes with big text but no \`data-read\`: ${unchecked.join(', ')}. Declare what must be read (or \`data-read="0"\`) and rerun; this is not a pass.` : `Declared texts measured: ${runs.length}.`, '')
+  lines.push(unchecked.length ? `**NOT CHECKED** — scenes with text but no \`data-read\`: ${unchecked.join(', ')}. Declare what must be read (or \`data-read="0"\`) and rerun; this is not a pass.` : `Declared texts measured: ${runs.length}.`, '')
   lines.push('### Too short to read', '', ...(short.length ? short : ['none']), '')
   lines.push('### Two things to read at once', '', ...(crowd.length ? crowd : ['none']), '')
   lines.push(`### Small on a phone (judge only if the film will be watched on phones)`, '', ...(small.length ? small : ['none']), '')
-  lines.push('### Big text not declared (mark it `data-read`, or `data-read="0"` if it is not meant to be read)', '', ...(loose.size ? [...loose].map(([s, [sid, t]]) => `- ${sid} ${t.toFixed(2)} s · "${s}"`) : ['none']))
+  lines.push('### Text not declared (≥ 22 px: mark it `data-read`, or `data-read="0"` on its container if it is not meant to be read)', '', ...(loose.size ? [...loose.values()].map(([sid, t, s]) => `- ${sid} ${t.toFixed(2)} s · "${s}"`) : ['none']))
   return { lines, problems: short.length + crowd.length + unchecked.length + loose.size }
 }
 

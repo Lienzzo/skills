@@ -173,7 +173,7 @@ you resume after a context reset.
 
 1. **Set up.**
    - `scripts/new_project.sh ~/Videos/<product>-showcase` copies `template/`, a working
-     12 s demo, into `src/` with git, and checks the tools (Playwright included).
+     14 s demo, into `src/` with git, and checks the tools (Playwright included).
    - Run the smoke test it prints.
    - Save the approved plan as `src/STORYBOARD.md`. It holds:
      - the chosen direction;
