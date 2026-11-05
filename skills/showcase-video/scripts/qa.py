@@ -151,7 +151,7 @@ for a, b, sid in montage_notes:
     note(f'{a:.2f} s change inside montage scene `{sid}`: one of its cuts? (filmstrip in {out}; list the cuts as {{montage: [T.c1, …]}} to check them)')
 for k, (a, b, why) in enumerate(intended):
     if k not in matched:
-        note(f"INTENDED {a:.2f}{f'–{b:.2f}' if b != a else ''} s{f' ({why})' if why else ''} matched no change in the file: stale after a re-time? remove it")
+        note(f"INTENDED {a:.2f}{f'–{b:.2f}' if b != a else ''} s{f' ({why})' if why else ''} matched no detected change: stale after a re-time (remove it), or a change too small for the detector (keep it)")
 
 # ── frozen stretches ───────────────────────────────────────────────────────────
 log = run(['ffmpeg', '-hide_banner', '-i', video, '-an', '-vf', 'scale=480:-2,freezedetect=n=0.0015:d=2.5', '-f', 'null', '-']).stderr

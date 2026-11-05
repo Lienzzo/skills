@@ -515,7 +515,9 @@ if (mode === 'preview') {
   if (!only && DURATION > 40) {
     // the cut (or a page break inside a long scene) nearest the middle
     const mid = splits.sort((x, y) => Math.abs(x - DURATION / 2) - Math.abs(y - DURATION / 2))[0] ?? DURATION / 2
-    const half = (h) => [...files].filter(([, [a, b]]) => (h === 1 ? a < mid : b >= mid) || (a === mid && b === mid)).map(([f]) => f)
+    // the sheets at the seam (the cut there, or the pages either side of a page break) go to both
+    const seam = (a, b) => a <= mid && b >= mid - 0.26
+    const half = (h) => [...files].filter(([, [a, b]]) => (h === 1 ? a < mid : b >= mid) || seam(a, b)).map(([f]) => f)
     const extra = [path.join(dir, 'lint.md'), ...(TL.V?.lines?.length ? [path.join(dir, 'narration.md')] : [])]
     const md = [`# Two reviewers in parallel (film ${DURATION.toFixed(1)} s, split at ${r2(mid)} s)`, '']
     for (const h of [1, 2]) md.push(`## Half ${h}: ${h === 1 ? `0–${r2(mid)}` : `${r2(mid)}–${r2(DURATION)}`} s`, '', ...[...half(h), ...extra].map((f) => `- ${f}`), '')

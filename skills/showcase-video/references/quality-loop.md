@@ -101,7 +101,8 @@ subagents aren't available, do the review yourself, strictly by the rubric, as i
 were seeing the film for the first time.
 
 **Films over 40 s: two reviewers in parallel**, one per half of `halves.md` (each gets its
-half's images, the cut between the halves, `lint.md` and `narration.md`). A single reviewer
+half's images, the sheets at the seam (the cut there, or the pages either side when it splits
+a long scene), `lint.md` and `narration.md`). A single reviewer
 reading every image of a long film hung twice in a past project. Same prompt, with "You see
 the first/second half of the film (0–31.4 s)". Merge the two reports; the verdict is "fix" if
 either says fix.
