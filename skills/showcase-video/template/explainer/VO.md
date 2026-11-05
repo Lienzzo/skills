@@ -3,7 +3,8 @@
 # proves it. On-screen text never repeats the voice: figures and 1–3 keywords only.
 # scripts/vo.py build . → assets/vo/*.wav + vo.js (ElevenLabs: $ELEVENLABS_API_KEY, @voice <id>).
 # Scratch voice to time the cut for free (macOS): vo.py build . --provider say (qa.py blocks it).
-@voice Samantha
+@voice XrExE9yKIg1WjnnlVkGX
+@say_voice Samantha
 @model eleven_multilingual_v2
 @lang en
 

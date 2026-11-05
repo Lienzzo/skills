@@ -666,7 +666,7 @@ export function mixdown({ kicks, sections = [], gains = {}, voice = [], voiceOve
       sfx: st(B.sfx, G.sfx, dSfx),
       delay: st(dl, G.delay, dFx),
       verb: st(rv, G.verb, dFx),
-      ...(voice.length ? { voice: (i: number): [number, number] => [B.voice.L[i], B.voice.R[i]] } : {}), // ridden and limited
+      ...(voice.length ? { voice: (i: number): [number, number] => [B.voice.L[i], B.voice.R[i]] } : {}), // ridden (before its peak limiter)
       total: (i) => [L[i], R[i]],
     }
     const rows = [['stem', ...sections.map((x) => x[0])].map((x) => x.padStart(8)).join(' ')]

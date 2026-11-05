@@ -7,7 +7,7 @@
 The script is <src>/VO.md: one take per line, `id: text`, optionally `id (gap 0.9): text` to
 leave a longer breath before it. Settings are `@key value` lines; everything else is ignored.
 
-    @voice  <ElevenLabs voice id>    (or $ELEVENLABS_VOICE_ID; with --provider say, a `say -v` name)
+    @voice  <ElevenLabs voice id>    (or $ELEVENLABS_VOICE_ID)    @say_voice Monica (scratch voice)
     @model  eleven_multilingual_v2   @format pcm_24000 (pcm_44100 needs a Pro plan)
     @stability 0.5  @similarity 0.75  @style 0  @speed 1     @rate 175 (say, words per minute)
     @lang   es                       (whisper's language, for say/file)
@@ -21,7 +21,8 @@ timeline.js finds them. Out: <src>/assets/vo/<id>.wav (48 kHz mono, each take at
 
 Providers:
   eleven  The final voice. ElevenLabs /with-timestamps: audio plus the time of every character,
-          so the word times are exact. Key in $ELEVENLABS_API_KEY (never printed). previous_text /
+          so the word times are exact. Key: $ELEVENLABS_API_KEY, $ELEVENLABS_API_KEY_FILE or the
+          macOS keychain item `elevenlabs` (never printed). previous_text /
           next_text keep the intonation continuous across takes. A take is regenerated only when
           its text, voice, model or settings change (or with --force): that is the cost control.
   say     A free scratch voice (macOS) to time the cut before spending credits. Word times come
@@ -161,7 +162,11 @@ def align_script(text, heard, lead, voiced_end):
     script = [w for w in text.split() if norm(w)]
     S = [norm(w) for w in script]
     times = [None] * len(S)
-    for blk in SequenceMatcher(None, S, [h['n'] for h in heard], autojunk=False).get_matching_blocks():
+    blocks = SequenceMatcher(None, S, [h['n'] for h in heard], autojunk=False).get_matching_blocks()
+    matched = sum(b.size for b in blocks)
+    if matched < 0.5 * len(S):  # whisper mishears some words, never most of them
+        die(f'the recording does not match the script: whisper heard {" ".join(h["n"] for h in heard)!r} for {text!r}')
+    for blk in blocks:
         for k in range(blk.size):
             h = heard[blk.b + k]
             times[blk.a + k] = [h['t0'], h['t1']]
@@ -191,9 +196,16 @@ def align_script(text, heard, lead, voiced_end):
 
 # ── providers ─────────────────────────────────────────────────────────────────
 def key():
+    """The API key, never printed: $ELEVENLABS_API_KEY, else the file in $ELEVENLABS_API_KEY_FILE,
+    else the macOS keychain item `elevenlabs` (security add-generic-password -s elevenlabs -a api -w)."""
     k = os.environ.get('ELEVENLABS_API_KEY')
+    if not k and os.environ.get('ELEVENLABS_API_KEY_FILE'):
+        k = open(os.path.expanduser(os.environ['ELEVENLABS_API_KEY_FILE'])).read().strip()
+    if not k and sys.platform == 'darwin':
+        r = subprocess.run(['security', 'find-generic-password', '-s', 'elevenlabs', '-w'], capture_output=True, text=True)
+        k = r.stdout.strip() if r.returncode == 0 else None
     if not k:
-        die('ELEVENLABS_API_KEY is not set (export it in this shell; it is never printed)')
+        die('no ElevenLabs key: set $ELEVENLABS_API_KEY or $ELEVENLABS_API_KEY_FILE, or store it in the keychain: security add-generic-password -s elevenlabs -a api -w')
     return k
 
 
@@ -209,6 +221,8 @@ def eleven_call(url, body=None):
 
 def gen_eleven(line, prev, nxt, cfg, out):
     voice = cfg.get('voice') or os.environ.get('ELEVENLABS_VOICE_ID') or die('no voice: @voice <id> in VO.md or $ELEVENLABS_VOICE_ID (vo.py voices lists them)')
+    if not re.fullmatch(r'[A-Za-z0-9]{20}', voice):
+        die(f'@voice {voice!r} is not an ElevenLabs voice id (20 characters): `vo.py voices` lists them. For the scratch voice use @say_voice and --provider say')
     fmt = cfg.get('format', 'pcm_24000')
     m = re.match(r'pcm_(\d+)$', fmt) or die(f'@format must be pcm_<rate> (got {fmt})')
     body = {
@@ -240,8 +254,8 @@ def gen_say(line, cfg, out):
     with tempfile.TemporaryDirectory() as d:
         a = os.path.join(d, 'a.aiff')
         cmd = ['say', '-o', a, '-r', cfg.get('rate', '175')]
-        if cfg.get('voice'):
-            cmd += ['-v', cfg['voice']]
+        if cfg.get('say_voice'):
+            cmd += ['-v', cfg['say_voice']]
         run(cmd + [line['text']])
         to_take(a, out)
     return None  # words come from whisper
@@ -258,7 +272,7 @@ def gen_file(line, src, out):
 
 # ── build ─────────────────────────────────────────────────────────────────────
 def take_hash(provider, line, cfg):
-    keep = {k: v for k, v in cfg.items() if k in ('voice', 'model', 'format', 'stability', 'similarity', 'style', 'speed', 'rate')}
+    keep = {k: v for k, v in cfg.items() if k in (('say_voice', 'rate') if provider == 'say' else ('voice', 'model', 'format', 'stability', 'similarity', 'style', 'speed') if provider == 'eleven' else ())}
     if provider == 'eleven' and 'voice' not in keep:
         keep['voice'] = os.environ.get('ELEVENLABS_VOICE_ID', '')
     if provider == 'file':
@@ -325,7 +339,7 @@ def build(src, provider, only, force, dry):
         else:
             entry = cached
         out_lines.append({**entry, 'id': line['id'], 'gap': line['gap']})
-    vo = {'provider': provider, 'voice': cfg.get('voice') or (os.environ.get('ELEVENLABS_VOICE_ID') if provider == 'eleven' else None), 'model': cfg.get('model') if provider == 'eleven' else None, 'lines': out_lines}
+    vo = {'provider': provider, 'voice': (cfg.get('voice') or os.environ.get('ELEVENLABS_VOICE_ID')) if provider == 'eleven' else cfg.get('say_voice') if provider == 'say' else None, 'model': cfg.get('model') if provider == 'eleven' else None, 'lines': out_lines}
     tmpjs = os.path.join(src, 'vo.js.tmp')  # written whole, then renamed: never half a vo.js
     with open(tmpjs, 'w', encoding='utf-8') as f:
         f.write('// Generated by scripts/vo.py from VO.md: do not edit by hand (re-run vo.py build).\n')

@@ -65,9 +65,12 @@ python3 scripts/vo.py build src                              # the final voice (
   takes from separate calls vary by ±2 dB) and `vo.js`: per take, the file, its duration, the
   silence before the first word and after the last, and every word with its start and end.
   - **ElevenLabs** (`/with-timestamps`): the time of every character, so word times are exact.
-    `previous_text`/`next_text` keep the intonation continuous across takes. The key comes from
-    `$ELEVENLABS_API_KEY` and is never printed. The voice is `@voice <id>` in VO.md or
-    `$ELEVENLABS_VOICE_ID`.
+    `previous_text`/`next_text` keep the intonation continuous across takes. The key never goes
+    in a prompt, a file in the project or the output. vo.py takes it from `$ELEVENLABS_API_KEY`,
+    else from the file named by `$ELEVENLABS_API_KEY_FILE`, else (macOS) from the keychain item
+    `elevenlabs` (`security add-generic-password -s elevenlabs -a api -w`, typed by the user).
+    The voice is `@voice <id>` in VO.md (20 characters, from `vo.py voices`) or
+    `$ELEVENLABS_VOICE_ID`; the scratch voice is `@say_voice <name>`.
   - **Cost control.** A take is regenerated only when its text, voice, model or settings
     change. Every generated take is recorded in `assets/vo/takes.json` the moment it exists,
     so a failure halfway (quota, network) loses nothing, and going back to an earlier wording
