@@ -130,6 +130,7 @@ async function phoneSheets(shot, ts, dir) {
   const rows = Math.max(1, Math.floor(1900 / (H * scale + 6)))
   const pages = []
   for (let i = 0; i * cols * rows < ts.length; i++) pages.push(await sheet(shot, ts.slice(i * cols * rows, (i + 1) * cols * rows), path.join(dir, `phone-${i + 1}.png`), cols, scale))
+  pages.perPage = cols * rows
   return pages
 }
 
@@ -411,7 +412,7 @@ async function readingLint(page, scenes, phoneMin) {
   lines.push('### Two things to read at once', '', ...(crowd.length ? crowd : ['none']), '')
   lines.push(`### Small on a phone (judge only if the film will be watched on phones)`, '', ...(small.length ? small : ['none']), '')
   lines.push('### Text not declared (≥ 22 px: mark it `data-read`, or `data-read="0"` on its container if it is not meant to be read)', '', ...(loose.size ? [...loose.values()].map(([sid, t, s]) => `- ${sid} ${t.toFixed(2)} s · "${s}"`) : ['none']))
-  return { lines, problems: short.length + crowd.length + unchecked.length + loose.size }
+  return { lines, runs, problems: short.length + crowd.length + unchecked.length + loose.size }
 }
 
 const { chromium } = await loadPlaywright()
@@ -439,14 +440,33 @@ if (mode === 'preview') {
   const scenes = SCENES.filter(([id]) => !only || id === only)
   const { page, shot } = await openPage(browser, url, 1)
   const lines = [`# Review pack ${tag}`, '']
+  // Every scene at 0.25 s steps (a pose that lasts less than that is a flash: the cut sheets
+  // catch those), 36 tiles to a page so each stays readable when a reviewer opens it.
+  const files = new Map() // file → [from, to]: which half of the film it belongs to
+  const splits = [] // where the pack may be split in two: cuts, and page breaks of long scenes
+  const r2 = (x) => Math.round(x * 100) / 100 // times as people read them (13.85, not 13.852999…)
+  const PAGE = 36
   for (const [id, a, b] of scenes) {
-    const st = Math.max(0.25, Math.round(((b - a) / 36) * 20) / 20)
-    lines.push(`- scene \`${id}\` ${a}–${b} s (every ${st} s): ${path.basename(await sheet(shot, range(a, b - 0.01, st), path.join(dir, `scene-${id}.png`)))}`)
+    const ts = range(a, b - 0.01, 0.25)
+    const pages = Math.ceil(ts.length / PAGE)
+    const names = []
+    for (let k = 0; k < pages; k++) {
+      const part = ts.slice(k * PAGE, (k + 1) * PAGE)
+      const f = await sheet(shot, part, path.join(dir, pages > 1 ? `scene-${id}-${k + 1}.png` : `scene-${id}.png`))
+      files.set(f, [part[0], part.at(-1)])
+      if (k) splits.push(part[0])
+      names.push(path.basename(f))
+    }
+    lines.push(`- scene \`${id}\` ${r2(a)}–${r2(b)} s (every 0.25 s): ${names.join(', ')}`)
   }
   const cuts = [...new Set(SCENES.map(([, a]) => a))].filter((c) => c > 0 && (!only || scenes.some(([, a, b]) => c === a || c === b)))
-  for (const c of cuts) lines.push(`- cut at ${c} s (±0.3 s every 0.05 s): ${path.basename(await sheet(shot, range(Math.max(0, c - 0.3), Math.min(DURATION, c + 0.3), 0.05), path.join(dir, `cut-${c}.png`), 13, 0.2))}`)
-  const bars = scenes.flatMap(([, a, b]) => range(a + 0.5, b - 0.01, 2))
-  lines.push(`- phone size (390 px wide, one frame per bar): ${(await phoneSheets(shot, bars, dir)).map((f) => path.basename(f)).join(', ')}`)
+  for (const c of cuts) {
+    const f = await sheet(shot, range(Math.max(0, c - 0.3), Math.min(DURATION, c + 0.3), 0.05), path.join(dir, `cut-${r2(c)}.png`), 13, 0.2)
+    files.set(f, [c, c])
+    splits.push(c)
+    lines.push(`- cut at ${r2(c)} s (±0.3 s every 0.05 s): ${path.basename(f)}`)
+  }
+  const filesAt = lines.length
   lines.push('', '## Lint: frames that depend on seek order (state carried between frames)', '')
   const probe = scenes.flatMap(([, a, b]) => range(a, b - 0.01, Math.max(0.25, DURATION / 48)))
   const unstable = await orderLint(page, shot, probe)
@@ -466,10 +486,42 @@ if (mode === 'preview') {
   lines.push('', '## Lint: reading time', '')
   const reading = await readingLint(page, scenes, Number(opt('phone-min', 12)))
   lines.push(...reading.lines)
+  // Phone size: one frame per text, the moment it has fully landed (so every declared text is
+  // judged at the size a phone shows it), and no gap over 4 s without a frame (what isn't
+  // declared text, a document or a chart, still has to read on a phone).
+  const words = (x) => x.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
+  const want = reading.runs.filter((r) => words(r.text)).map((r) => Math.min(r.b, r.from + 0.2))
+  for (const [, a, b] of scenes) {
+    const inside = [a, ...want.filter((t) => t >= a && t < b).sort((x, y) => x - y), b]
+    for (let i = 1; i < inside.length; i++) {
+      const gap = inside[i] - inside[i - 1]
+      const n = Math.floor(gap / 4)
+      for (let k = 1; k <= n; k++) want.push(inside[i - 1] + (gap * k) / (n + 1))
+      if (!n && i === 1 && inside.length === 2) want.push((a + b) / 2) // a short scene with no text
+    }
+  }
+  const phoneTs = []
+  for (const t of want.sort((x, y) => x - y)) if (!phoneTs.length || t - phoneTs.at(-1) > 0.3) phoneTs.push(Math.round(t * 1000) / 1000)
+  const phone = await phoneSheets(shot, phoneTs, dir)
+  phone.forEach((f, i) => files.set(f, [phoneTs[i * phone.perPage], phoneTs[Math.min(phoneTs.length, (i + 1) * phone.perPage) - 1]]))
+  lines.splice(filesAt, 0, `- phone size (390 px wide: one frame per text as it lands, none more than 4 s apart): ${phone.map((f) => path.basename(f)).join(', ')}`)
   lines.splice(1, 0, reading.problems ? `**Reading lint: ${reading.problems} problem(s)** — fix them before the reviewer sees the pack (section at the end).` : 'Reading lint: clean (phone sizes, if any, are listed at the end).', '')
   if (pageErrors) lines.push('', `## ${pageErrors} page error(s) — see the console output`)
   fs.writeFileSync(path.join(dir, 'lint.md'), lines.join('\n') + '\n')
   console.log(lines.join('\n'))
+  // Films over 40 s: one reviewer reading every image of the film has hung twice. Split the
+  // pack at the cut nearest the middle: two fresh reviewers in parallel, one per half, both
+  // with the cut between them (quality-loop.md § 3).
+  if (!only && DURATION > 40) {
+    // the cut (or a page break inside a long scene) nearest the middle
+    const mid = splits.sort((x, y) => Math.abs(x - DURATION / 2) - Math.abs(y - DURATION / 2))[0] ?? DURATION / 2
+    const half = (h) => [...files].filter(([, [a, b]]) => (h === 1 ? a < mid : b >= mid) || (a === mid && b === mid)).map(([f]) => f)
+    const extra = [path.join(dir, 'lint.md'), ...(TL.V?.lines?.length ? [path.join(dir, 'narration.md')] : [])]
+    const md = [`# Two reviewers in parallel (film ${DURATION.toFixed(1)} s, split at ${r2(mid)} s)`, '']
+    for (const h of [1, 2]) md.push(`## Half ${h}: ${h === 1 ? `0–${r2(mid)}` : `${r2(mid)}–${r2(DURATION)}`} s`, '', ...[...half(h), ...extra].map((f) => `- ${f}`), '')
+    fs.writeFileSync(path.join(dir, 'halves.md'), md.join('\n'))
+    console.log(`\nhalves.md: two reviewers, split at ${r2(mid)} s`)
+  }
   // A narrated film: what is SAID when, scene by scene, so the reviewer can check every claim
   // against what is on screen during its words (and catch on-screen text that repeats it).
   if (TL.V?.lines?.length) {

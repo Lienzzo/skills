@@ -35,14 +35,21 @@ build / fix ─► node render.mjs review [--scene id] ─► read the pack your
   and the rubric. Repeat until clean. Then the next scene.
 - **Whole film.** `review` (all scenes and all planned cuts), then a fresh reviewer.
   Repeat until the exit criteria are met.
-- **Final file.** `qa.py` on the finalized mp4. Resolve every flagged moment (fix it, or
-  add it to `INTENDED`), and give the reviewer the 1 fps sheet of the file. Repeat until
-  qa.py exits 0.
+- **The file.** In the rounds, `qa.py out/<name>.mkv src` on the joined render: no finalize
+  needed, and every check except colour tags and the audio mux runs on it. Resolve every
+  flagged moment: fix it, or add it to `INTENDED` with its reason (`{ at: T.modal, why: … }`;
+  `{ at, to, why }` for a run of planned changes). Give the reviewer the 1 fps sheet of the
+  file. When the film passes, `finalize.sh` once, then `qa.py` on the delivered mp4 (it must
+  exit 0).
 
 The review pack in `out/review/<tag>/` contains:
-- `scene-<id>.png`: the whole scene at ≤ 0.25 s steps;
+- `scene-<id>.png` (`scene-<id>-<k>.png` past 9 s): the whole scene at 0.25 s steps, 36 tiles
+  a page;
 - `cut-<t>.png`: ±0.3 s around each planned cut at 0.05 s;
-- `phone-<n>.png`: one frame per bar at 390 px wide, the size a phone shows it;
+- `phone-<n>.png`: at 390 px wide, the size a phone shows it, one frame per declared text at
+  the moment it has landed, and never more than 4 s between frames;
+- `halves.md`, for films over 40 s: the pack split in two at the cut nearest the middle, for
+  two reviewers in parallel (§ 3);
 - `lint.md`, with four checks:
   - text partly outside the frame (not text inside `data-read="0"`: a code wall cropped on purpose);
   - frames that change with seek order (the element and property that kept the state);
@@ -92,6 +99,12 @@ Spawn a **fresh** subagent: general-purpose, or whatever is available. It must n
 inherit your context: fresh eyes judge what is on screen, not what you intended. If
 subagents aren't available, do the review yourself, strictly by the rubric, as if you
 were seeing the film for the first time.
+
+**Films over 40 s: two reviewers in parallel**, one per half of `halves.md` (each gets its
+half's images, the cut between the halves, `lint.md` and `narration.md`). A single reviewer
+reading every image of a long film hung twice in a past project. Same prompt, with "You see
+the first/second half of the film (0–31.4 s)". Merge the two reports; the verdict is "fix" if
+either says fix.
 
 ```
 You are reviewing frames of a product video in production. You have not seen it before.

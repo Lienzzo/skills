@@ -4,7 +4,8 @@
 # which lifts peaks by up to ~1 dB, still stays under qa.py's −1 dBTP), then the deliverables into $DEST:
 #   <name>.mp4 (master, crf 17) · <name>-web.mp4 (crf 22) · <name>-share.mp4 (720p, ≤ SHARE_MB, for chat apps)
 # Usage: SRC=out/video.mkv NAME=product-showcase-v2 DEST=../v2 ./finalize.sh
-# Takes minutes (three slow encodes): run it in the background.
+# Takes a few minutes: run it in the background, once the film has passed review and qa.py on
+# out/<name>.mkv; not in every round.
 # Refuses to overwrite existing deliverables (earlier versions stay side by side) unless FORCE=1.
 # Each file is written as .part and renamed when complete, so an interrupted run never leaves a
 # truncated deliverable: RESUME=1 re-runs the same version and skips the files already done.
@@ -58,24 +59,28 @@ python3 -c "import sys; sys.exit(0 if abs(($TGT)-($I)) <= 0.5 and ($TP) <= -1.5 
 # otherwise colours shift slightly in browsers/players.
 VF="scale=in_color_matrix=bt601:out_color_matrix=bt709:in_range=tv:out_range=tv,format=yuv420p"
 TAGS=(-colorspace bt709 -color_primaries bt709 -color_trc bt709)
-F="$DEST/$NAME.mp4"
-if todo "$F"; then
+# Presets, measured on a 63 s 1080p60 film (M1 Pro): master and web at -preset fast give the
+# same SSIM and size as slow (0.9776 vs 0.9761, ±1 %) and the grain survives on dark gradients;
+# slow took 169 + 64 s, fast 76 + 51. The share copy stays slow: it is small and its 2 passes
+# spend the size budget. Run one after another: side by side they took longer (351 s vs 279),
+# x264 already fills the cores. A hardware encoder (VideoToolbox) was 8× faster but smeared
+# the grain into blotches on dark backgrounds. Each file is written as .part and renamed.
+master() {
   ffmpeg -hide_banner -loglevel error -y -i "$SRC" -i out/audio.wav -map 0:v -map 1:a -vf "$VF" \
-    -c:v libx264 -preset slow -crf 17 -tune grain -profile:v high -level 4.2 -g 120 "${TAGS[@]}" \
-    -c:a aac -b:a 320k -ar 48000 -shortest -movflags +faststart -f mp4 "$F.part"
-  mv "$F.part" "$F"
-fi
-F="$DEST/$NAME-web.mp4"
-if todo "$F"; then
+    -c:v libx264 -preset fast -crf 17 -tune grain -profile:v high -level 4.2 -g 120 "${TAGS[@]}" \
+    -c:a aac -b:a 320k -ar 48000 -shortest -movflags +faststart -f mp4 "$1.part"
+  mv "$1.part" "$1"
+}
+web() {
   ffmpeg -hide_banner -loglevel error -y -i "$SRC" -i out/audio.wav -map 0:v -map 1:a -vf "$VF" \
-    -c:v libx264 -preset slow -crf 22 -aq-mode 3 -profile:v high -level 4.2 -g 120 "${TAGS[@]}" \
-    -c:a aac -b:a 256k -ar 48000 -shortest -movflags +faststart -f mp4 "$F.part"
-  mv "$F.part" "$F"
-fi
+    -c:v libx264 -preset fast -crf 22 -aq-mode 3 -profile:v high -level 4.2 -g 120 "${TAGS[@]}" \
+    -c:a aac -b:a 256k -ar 48000 -shortest -movflags +faststart -f mp4 "$1.part"
+  mv "$1.part" "$1"
+}
 # Share copy: 2-pass to a size budget (WhatsApp-style limits recompress or refuse big files),
 # long edge 1280 px whatever the format (720p landscape, 720×1280 vertical, 1280² square).
-F="$DEST/$NAME-share.mp4"
-if todo "$F"; then
+share() {
+  local DUR VK SC P
   DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$SRC")
   VK=$(python3 -c "print(max(300, int($SHARE_MB * 8192 * 0.96 / $DUR - 128)))")
   SC="scale='if(gte(iw,ih),1280,-2)':'if(gte(iw,ih),-2,1280)':flags=lanczos"
@@ -83,8 +88,13 @@ if todo "$F"; then
   ffmpeg -hide_banner -loglevel error -y -i "$SRC" -vf "$VF,$SC" -c:v libx264 -preset slow -b:v ${VK}k -pass 1 -passlogfile "$P" -an -f null /dev/null
   ffmpeg -hide_banner -loglevel error -y -i "$SRC" -i out/audio.wav -map 0:v -map 1:a -vf "$VF,$SC" \
     -c:v libx264 -preset slow -b:v ${VK}k -pass 2 -passlogfile "$P" "${TAGS[@]}" \
-    -c:a aac -b:a 128k -ar 48000 -shortest -movflags +faststart -f mp4 "$F.part"
-  mv "$F.part" "$F"
+    -c:a aac -b:a 128k -ar 48000 -shortest -movflags +faststart -f mp4 "$1.part"
+  mv "$1.part" "$1"
   rm -f "$P"*
-fi
+}
+T0=$(date +%s)
+F="$DEST/$NAME.mp4"; if todo "$F"; then master "$F"; fi
+F="$DEST/$NAME-web.mp4"; if todo "$F"; then web "$F"; fi
+F="$DEST/$NAME-share.mp4"; if todo "$F"; then share "$F"; fi
+echo "encodes: $(( $(date +%s) - T0 )) s"
 ls -lh "$DEST/$NAME.mp4" "$DEST/$NAME-web.mp4" "$DEST/$NAME-share.mp4"

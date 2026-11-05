@@ -10,11 +10,15 @@ Blockers (exit 1 until resolved):
   ✗ frame count ≠ DURATION × FPS (a bad segment join doubles or truncates), wrong resolution,
     colour not tagged bt709 (mp4), no audio (mp4), loudness outside −14 ±1 LUFS (timeline.js LOUDNESS: −16 in narrated films), true peak > −1 dBTP
   ✗ moments to review: discontinuities (a frame that changes far more than its neighbours:
-    jumps, pops, stray cuts) and near-black stretches that are not planned. Planned = a SCENES
-    boundary (±0.12 s), inside a scene marked {montage: true}, or listed in timeline.js
-    `INTENDED` (e.g. [T.flash, T.modal]: reference cues, so it survives timing changes).
+    jumps, pops, stray cuts) and near-black stretches that are not planned. An instant change is
+    planned at a SCENES boundary (±0.12 s), at a cut of a montage scene ({montage: [T.c1, …]}),
+    or in timeline.js `INTENDED`: [{ at: T.flash, why: 'the flash' }, { at: T.a, to: T.b, why:
+    'verdicts land one by one' }] (cues, so it survives re-timing; a bare T.flash works too).
+    A near-black stretch is planned only if it is short (≤ 0.5 s) at a cut, or inside an
+    INTENDED range: a 4 s black that starts on a cut is a bug, not a cut. A scene marked
+    {montage: true} without its cuts lists its changes as notes (with filmstrips), not blockers.
     Each gets a filmstrip from the file in <src>/out/qa/<name>/: look at it, then fix the bug
-    or add the time to INTENDED. A polished 84 s video had ~35 on its first pass — mostly
+    or add it to INTENDED. INTENDED entries that match nothing are listed (stale after a re-time?). A polished 84 s video had ~35 on its first pass — mostly
     instant UI changes (a modal opening, a flash), and that is the point: every instant
     change should be one you meant.
 Notes: frozen stretches ≥ 2.5 s, silences ≥ 0.6 s.
@@ -76,9 +80,27 @@ if video.endswith('.mp4'):
 # ── what counts as planned ─────────────────────────────────────────────────────
 scenes = tl['S'] or []
 bounds = {s[1] for s in scenes} | {s[2] for s in scenes}
-montage = [(s[1], s[2]) for s in scenes if len(s) > 3 and isinstance(s[3], dict) and s[3].get('montage')]
-def planned(t):
-    return any(abs(t - b) <= 0.12 for b in bounds | set(tl['I'])) or any(a <= t <= b for a, b in montage)
+opts = [(s[0], s[1], s[2], s[3]) for s in scenes if len(s) > 3 and isinstance(s[3], dict)]
+for sid, a, b, o in opts:  # a montage's own cuts count as cuts
+    if isinstance(o.get('montage'), list):
+        bounds |= {float(c) for c in o['montage']}
+loose_montage = [(sid, a, b) for sid, a, b, o in opts if o.get('montage') is True]
+intended = []  # (from, to, why)
+for x in tl['I']:
+    if isinstance(x, (int, float)):
+        intended.append((float(x), float(x), ''))
+    elif isinstance(x, dict) and isinstance(x.get('at'), (int, float)):
+        intended.append((float(x['at']), float(x.get('to', x['at'])), str(x.get('why', ''))))
+    else:
+        bad(f'INTENDED entry not understood: {x!r} — a cue (T.flash) or {{ at, to?, why }}')
+matched = set()
+def planned(t, end=None):
+    """An instant change at t, or (with end) a near-black stretch t–end."""
+    for k, (a, b, _) in enumerate(intended):
+        if a - 0.12 <= t <= b + 0.12 and (end is None or end <= b + 0.12 or a == b and end - t <= 0.5):
+            matched.add(k)
+            return True
+    return any(abs(t - c) <= 0.12 for c in bounds) and (end is None or end - t <= 0.5)
 if not scenes:
     note('timeline.js exports no SCENES: every discontinuity is listed for review')
 
@@ -96,18 +118,20 @@ for i, (t, x) in enumerate(zip(ts, sc)):
             events[-1][1] = t
         else:
             events.append([t, t])
-review += [('discontinuity', a, b) for a, b in events if not planned(a)]
+in_montage = lambda t: next((sid for sid, a, b in loose_montage if a <= t <= b), None)
+montage_notes = [(a, b, in_montage(a)) for a, b in events if not planned(a) and in_montage(a)]
+review += [('discontinuity', a, b) for a, b in events if not planned(a) and not in_montage(a)]
 
 # ── near-black stretches outside the opening fade-in and the closing fade-out ─
 log = run(['ffmpeg', '-hide_banner', '-i', video, '-an', '-vf', 'scale=480:-2,blackdetect=d=0.05:pix_th=0.06', '-f', 'null', '-']).stderr
 fade_out = (tl['fade'] or [tl['D'] - 1.5])[0]
 for a, b in re.findall(r'black_start:([\d.]+) black_end:([\d.]+)', log):
     a, b = float(a), float(b)
-    if b > 0.6 and a < fade_out - 0.05 and not planned(a):
+    if b > 0.6 and a < fade_out - 0.05 and not planned(a, b):
         review.append(('near-black', a, b))
 
 # ── a filmstrip from the file for every moment to review ───────────────────────
-for kind, a, b in review:
+for kind, a, b in review + [('montage', a, b) for a, b, _ in montage_notes]:
     t0 = max(0, a - 0.25)
     strip = os.path.join(out, f'{a:07.2f}-{kind}.png')
     frames = max(10, min(20, round((b - a + 0.5) * 20)))
@@ -120,9 +144,14 @@ if review:
     bad(f'{len(review)} unplanned moment(s) to review — filmstrips (20 fps, from 0.25 s before) in {out}:')
     for kind, a, b in review:
         print(f'    {a:6.2f}–{b:6.2f} s  {kind}')
-    print('    fix each bug; add each intended one to INTENDED in timeline.js (by cue: T.flash, T.modal…)')
+    print("    fix each bug; add each intended one to INTENDED in timeline.js, by cue and with its reason: { at: T.modal, why: 'modal opens' } (or { at, to, why } for a run)")
 else:
     ok(f'no unplanned discontinuities or near-black stretches ({len(events)} discontinuities, all planned)')
+for a, b, sid in montage_notes:
+    note(f'{a:.2f} s change inside montage scene `{sid}`: one of its cuts? (filmstrip in {out}; list the cuts as {{montage: [T.c1, …]}} to check them)')
+for k, (a, b, why) in enumerate(intended):
+    if k not in matched:
+        note(f"INTENDED {a:.2f}{f'–{b:.2f}' if b != a else ''} s{f' ({why})' if why else ''} matched no change in the file: stale after a re-time? remove it")
 
 # ── frozen stretches ───────────────────────────────────────────────────────────
 log = run(['ffmpeg', '-hide_banner', '-i', video, '-an', '-vf', 'scale=480:-2,freezedetect=n=0.0015:d=2.5', '-f', 'null', '-']).stderr
@@ -145,6 +174,8 @@ if has_audio:
             note(f'silence {a:.2f}–{b:.2f} s: an intended breath?')
 elif video.endswith('.mp4'):
     bad('no audio stream')
+else:
+    print('· no audio in this render: loudness and peaks are checked on the finalized mp4')
 
 # ── contact sheet of the whole file ────────────────────────────────────────────
 sheet = os.path.join(out, 'sheet-1fps.png')

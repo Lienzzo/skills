@@ -246,20 +246,20 @@ you resume after a context reset.
 5. **Render and QA.**
    - `./render-segs.sh <name> 2 2` is resumable and watchdog-guarded. Run it in the
      background.
-   - `SRC=out/<name>.mkv NAME=… DEST=../vN ./finalize.sh` produces the master, web and
-     share files. It takes minutes: run it in the background too. If it is interrupted,
-     `RESUME=1` finishes the same version without redoing the files already written.
-   - Other formats: the same steps with `FORMAT=9x16` (etc.) in front of each command,
-     their own `NAME`, and their own review round first.
-   - `python3 <skill>/scripts/qa.py ../vN/<name>.mp4 .` checks:
-     - frames, resolution, colour, loudness;
+   - `python3 <skill>/scripts/qa.py out/<name>.mkv .` on the joined render, every round
+     (no finalize needed). It checks:
+     - frames, resolution, the first frame (the thumbnail), the scratch voice;
      - every **unplanned** discontinuity (jumps, pops) and near-black stretch, each with
        a filmstrip cut from the file.
 
      For each flagged moment, fix it (re-render only the affected segments: delete their
-     `.ok`) or add it to `INTENDED`.
-   - Give the reviewer the final 1 fps sheet too.
-   - Repeat until qa.py exits 0.
+     `.ok`) or add it to `INTENDED` with its reason (`{ at: T.modal, why: 'modal opens' }`).
+   - Give the reviewer the 1 fps sheet of the file too. Repeat until qa.py exits 0.
+   - Then, once: `SRC=out/<name>.mkv NAME=… DEST=../vN ./finalize.sh` (master, web and share
+     files, encoded side by side; run it in the background; `RESUME=1` finishes an
+     interrupted run), and `qa.py ../vN/<name>.mp4 .`, which adds colour, loudness and peak.
+   - Other formats: the same steps with `FORMAT=9x16` (etc.) in front of each command,
+     their own `NAME`, and their own review round first.
 
    Commands, memory and timings are in `references/render-deliver.md`.
 

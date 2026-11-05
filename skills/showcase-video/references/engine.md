@@ -86,9 +86,10 @@ export function at(t) {              // every frame: set styles from t only
 ```
 
 Register it in `main.js` (`MODULES`), add a `<section id="s4" class="scene">`, and add its
-window to `SCENES` in `timeline.js` (`['s4', T.s4, T.s5]`; append `{ montage: true }` for a
-scene that cuts freely inside). Cues for instant changes you mean (a flash, a modal that
-pops open) go in `INTENDED`, so QA doesn't flag them as jumps.
+window to `SCENES` in `timeline.js` (`['s4', T.s4, T.s5]`; append `{ montage: [T.c1, T.c2] }`
+for a scene that cuts inside, listing its cuts). Instant changes you mean (a flash, a modal that
+pops open) go in `INTENDED` by cue and with their reason (`{ at: T.modal, why: 'modal opens' }`,
+or `{ at, to, why }` for a run of them), so QA doesn't flag them as jumps.
 
 ## 4. lib.js cheat sheet
 

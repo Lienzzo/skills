@@ -10,9 +10,10 @@ node render.mjs sheet --from 9.7 --to 10.3 --step 0.05   # filmstrip across a mo
 node render.mjs review [--scene id]        # the loop's review pack → out/review/<tag>/
 ./render-segs.sh v3 2 2                    # full render, resumable → out/v3.mkv (frame count checked)
 REPORT=1 bun audio.ts                      # soundtrack + stem table per scene
-SRC=out/v3.mkv NAME=acme-showcase-v3 DEST=../v3 ./finalize.sh   # master + web + share (minutes: background)
+python3 <skill>/scripts/qa.py out/v3.mkv .                      # QA on the joined render: every round
+SRC=out/v3.mkv NAME=acme-showcase-v3 DEST=../v3 ./finalize.sh   # master + web + share, once (minutes: background)
 RESUME=1 SRC=… NAME=… DEST=… ./finalize.sh # finish an interrupted finalize of the same version
-python3 <skill>/scripts/qa.py ../v3/acme-showcase-v3.mp4 .      # automated QA on the file
+python3 <skill>/scripts/qa.py ../v3/acme-showcase-v3.mp4 .      # QA on the delivered file (adds colour, loudness)
 FORMAT=9x16 ./render-segs.sh v3-916 2 2    # another format: FORMAT= in front of every command
 node capture.mjs login https://app.example.com   # the human logs in; captures reuse the session
 uv run <skill>/scripts/beats.py track.wav > assets/beats.json   # a supplied track's grid
@@ -41,9 +42,11 @@ uv run <skill>/scripts/beats.py track.wav > assets/beats.json   # a supplied tra
   `node render.mjs render --from 26 --to 44 --dsf 1 --name draft-s4`.
 - **Motion blur** (`{ mblur: 4 }` on a scene) multiplies that scene's render time by 4.
   Use it on the few seconds that move fast, not on a whole film.
-- **finalize.sh** runs three slow encodes: several minutes even for a short film (a 12 s
-  vertical took ~4 min on a laptop). Run it in the background; if it stops, `RESUME=1`
-  keeps the files already finished (each is written as `.part` and renamed when done).
+- **finalize.sh** runs three encodes: ~3.5 min for a 63 s 1080p60 film on an M1 Pro (it was
+  4.6 min at -preset slow, with no measurable gain). Run it once, when the film has passed:
+  in the rounds, `qa.py out/<name>.mkv` checks the joined render in ~50 s, against ~5 min for
+  finalize + qa. Run it in the background; if it stops, `RESUME=1` keeps the files already
+  finished (each is written as `.part` and renamed when done).
 
 ## Deliverables
 

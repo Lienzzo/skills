@@ -57,7 +57,8 @@ export const T = {
 // Scene windows [id, from, to, opts?] (cuts in the breaths: never mid-word). Boundaries are the planned cuts: `render.mjs review`
 // filmstrips each one, qa.py flags any hard cut the file has that is NOT listed here
 // (a jump), and audio.ts reports stem levels per scene.
-// opts: { montage: true } cuts freely inside (qa.py skips it) · { mblur: 4 } renders real
+// opts: { montage: [T.c1, T.c2, …] } its cuts (qa.py checks every other change in it; `true` without
+// the list makes them notes, not checks) · { mblur: 4 } renders real
 // motion blur there (4 subframes per frame, 4× the render cost: only for whip pans and fast pushes).
 export const SCENES = [
   ['title', 0, T.ui],
@@ -65,8 +66,9 @@ export const SCENES = [
   ['end', T.end, DURATION],
 ]
 
-// Planned instant changes (a flash, a modal that pops open), by cue so they follow timing
-// changes: qa.py does not flag them as jumps.
+// Planned instant changes (a flash, a modal that pops open) and planned dark stretches, by cue so
+// they follow timing changes, each with its reason: qa.py does not flag them.
+//   { at: T.modal, why: 'the modal opens' } · { at: T.v0, to: T.v1, why: 'verdicts land one by one' }
 export const INTENDED = []
 
 export const QUESTION = 'What changed this week?'
